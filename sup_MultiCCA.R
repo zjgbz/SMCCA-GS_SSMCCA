@@ -182,7 +182,7 @@ MultiCCA.Phenotype.ZeroSome <- function(xlist,y,qt=.8,cens=NULL,outcome=c("quant
     score_list[[k]] = score.x
   }
   # return(list(xlist_sel=xlist_sel, score_list=score_list))
-  return(xlist_sel=xlist_sel, feature_dropped=feature_dropped)
+  return(list(xlist_sel=xlist_sel, feature_dropped=feature_dropped))
 }
 
 CCAPhenotypeZeroSome <- function(x,z,y,qt=.8,cens=NULL,outcome=c("quantitative", "survival", "multiclass"), typex,typez){
