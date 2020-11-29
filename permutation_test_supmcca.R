@@ -259,7 +259,7 @@ for (matrix_seed in matrix_seed_vec) {
 			cv_assay_cor_plot(x1, cv1, rep, output_dir, "cor-cv1-x1", existed_image_prefix)
 			cv_assay_cor_plot(x2, cv2, rep, output_dir, "cor-cv2-x2", existed_image_prefix)
 
-			cors[1, ] <- GetCors(input_list, out$ws, K)
+			cors[1, ] <- GetCors(input_list_select, out$ws, K)
 
 			set.seed(perm_seed)
 			for (perm_i in 1:nperm_test) {
