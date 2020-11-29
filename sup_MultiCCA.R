@@ -176,7 +176,7 @@ MultiCCA.Phenotype.ZeroSome <- function(xlist,y,qt=.8,cens=NULL,outcome=c("quant
     }
     xnew <- tmp_x
     xnew[,!keep.x] <- 0
-    feature_dropped = colname(tmp_x)[!keep.x]
+    feature_dropped = colnames(tmp_x)[!keep.x]
     xnew_effec = xnew[, colSums(xnew != 0) > 0]
     xlist_sel[[k]] = xnew_effec
     score_list[[k]] = score.x
