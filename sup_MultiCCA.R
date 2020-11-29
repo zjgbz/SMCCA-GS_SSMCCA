@@ -1,577 +1,259 @@
-# This contains what used to be in CGH.SparseCCA.R and MultiSparseCCA.R
+library(PMA)
 
-
-CCA <- function(x, z, typex=c("standard", "ordered"), typez=c("standard","ordered"), penaltyx=NULL, penaltyz=NULL, K=1, niter=15, v=NULL, trace=TRUE, standardize=TRUE, xnames=NULL, znames=NULL, chromx=NULL, chromz=NULL, upos=FALSE, uneg=FALSE, vpos=FALSE, vneg=FALSE, outcome=NULL, y=NULL, cens=NULL){
-  if(ncol(x)<2) stop("Need at least two features in dataset x.")
-  if(ncol(z)<2) stop("Need at least two features in dataset z.")
-  if(upos && uneg) stop("At most one of upos and uneg should be TRUE!")
-  if(vpos && vneg)  stop("At most one of vpos and vneg should be TRUE!")
-  if(typez=="ordered" && (vpos||vneg)) stop("Cannot require elements of v to be positive or negative if typez is ordered")
-  if(typex=="ordered" && (upos||uneg)) stop("Cannot require elements of u to be positive or negative if typex is ordered")
-  typex <- match.arg(typex)
-  typez <- match.arg(typez)
-  call <- match.call()
-  if(sum(is.na(x))+sum(is.na(z)) > 0) stop("Cannot have NAs in x or z")
-  if(nrow(x)!=nrow(z)) stop("x and z must have same number of rows")
-  if(standardize){
-    sdx <- apply(x,2,sd)
-    sdz <- apply(z,2,sd)
-    if(min(sdx)==0) stop("Cannot standardize because some of the columns of x have std. dev. 0")
-    if(min(sdz)==0) stop("Cannot standardize because some of the columns of z have std. dev. 0")
-    x <- scale(x,TRUE,sdx)
-    z <- scale(z,TRUE,sdz)
-  }
-  if(!is.null(outcome)){
-    pheno.out <- CCAPhenotypeZeroSome(x,z,y,qt=.8, cens=cens, outcome=outcome, typex=typex, typez=typez)
-    x <- pheno.out$x
-    z <- pheno.out$z
-  }
-  if(typex=="standard" && !is.null(chromx)) warning("Chromx has no effect for type standard")
-  if(typez=="standard" && !is.null(chromz)) warning("Chromz has no effect for type standard")
-  v <- CheckVs(v,x,z,K)
-  if(is.null(penaltyx)){
-    if(typex=="standard") penaltyx <- .3#pmax(1.001,.3*sqrt(ncol(x)))/sqrt(ncol(x))
-    if(typex=="ordered")  penaltyx <- ChooseLambda1Lambda2(as.numeric(CheckVs(NULL,z,x,1))) # v[,1] used to be NULL 
-  }
-  if(is.null(penaltyz)){
-    if(typez=="standard") penaltyz <- .3#pmax(1.001,.3*sqrt(ncol(z)))/sqrt(ncol(z))
-    if(typez=="ordered")  penaltyz <-  ChooseLambda1Lambda2(as.numeric(CheckVs(NULL,x,z,1))) # ChooseLambda1Lambda2(as.numeric(v[,1]))
-  }
-  if(!is.null(penaltyx)){
-    if(typex=="standard" && (penaltyx<0 || penaltyx>1)) stop("Penaltyx must be between 0 and 1 when typex is standard.")
-    if(typex=="ordered" && penaltyx<0) stop("Penaltyx must be non-negative when typex is standard.")
-  }
-  if(!is.null(penaltyz)){
-    if(typez=="standard" && (penaltyz<0 || penaltyz>1)) stop("Penaltyz must be between 0 and 1 when typez is standard.")
-    if(typez=="ordered" && penaltyz<0) stop("Penaltyz must be non-negative when typez is standard.")
-  }
-  out <- CCAAlgorithm(x=x,z=z,v=v,typex=typex,typez=typez,penaltyx=penaltyx,penaltyz=penaltyz,K=K,niter=niter,trace=trace,chromx=chromx,chromz=chromz,upos=upos,uneg=uneg,vpos=vpos,vneg=vneg)
-  out$outcome <- outcome
-  out$call <- call
-  out$xnames <- xnames
-  out$znames <- znames
-  out$typex<-typex
-  out$typez<-typez
-  out$penaltyx<-penaltyx
-  out$penaltyz<-penaltyz
-  out$K <- K
-  out$niter <- niter
-  out$upos <- upos
-  out$uneg <- uneg
-  out$vpos <- vpos
-  out$vneg <- vneg
-  out$xnames <- xnames
-  out$znames <- znames
-  out$v.init <- v
-  out$cors <- numeric(K)
-  for(k in 1:K){
-    if(sum(out$u[,k]!=0)>0 && sum(out$v[,k]!=0)>0) out$cors[k] <- cor(x%*%out$u[,k],z%*%out$v[,k])
-  }
-  class(out) <- "CCA"
-  return(out)
+soft <- function(x,d){
+  return(sign(x)*pmax(0, abs(x)-d))
 }
 
-
-print.CCA <- function(x,verbose=FALSE,...){
-  cat("Call: ")
-  dput(x$call)
-  cat("\n\n")
-  cat("Num non-zeros u's: ", apply(x$u!=0,2,sum), "\n")
-  cat("Num non-zeros v's: ", apply(x$v!=0,2,sum), "\n")
-  cat("Type of x: ", x$typex,"\n")
-  cat("Type of z: ", x$typez,"\n")
-  if(x$typex=="standard") cat("Penalty for x: L1 bound is ", x$penaltyx, "\n")
-  if(x$typez=="standard") cat("Penalty for z: L1 bound is ", x$penaltyz, "\n")
-  if(x$typex=="ordered") cat("Penalty for x: Lambda is ", x$penaltyx, "\n")
-  if(x$typez=="ordered") cat("Penalty for z: Lambda is ", x$penaltyz, "\n")
-  if(x$upos) cat("U's constrained to be positive", fill=TRUE)
-  if(x$uneg) cat("U's constrained to be negative", fill=TRUE)
-  if(x$vpos) cat("V's constrained to be positive", fill=TRUE)
-  if(x$vneg) cat("V's constrained to be negative", fill=TRUE)
-  if(!is.null(x$outcome)) cat("Outcome used: ", x$outcome, fill=TRUE)
-  cat("Cor(Xu,Zv): ", x$cors, fill=TRUE)
-  if(verbose){
-    for(k in 1:x$K){
-      cat("\n Component ", k, ":\n")
-      u <- x$u[,k]
-      v <- x$v[,k]
-      if(is.null(x$xnames)) x$xnames <- 1:length(u)
-      if(is.null(x$znames)) x$znames <- 1:length(v)
-      cat(fill=T)
-      us <- cbind(x$xnames[u!=0], round(u[u!=0],3))
-      dimnames(us) <- list(1:sum(u!=0), c("Row Feature Name", "Row Feature Weight"))
-      vs <- cbind(x$znames[v!=0], round(v[v!=0],3))
-      dimnames(vs) <- list(1:sum(v!=0), c("Column Feature Name", "Column Feature Weight"))
-      print(us, quote=FALSE, sep="\t")
-      cat(fill=T)
-      print(vs, quote=FALSE, sep="\t")
-    }  
-  }
+l2n <- function(vec){
+  a <- sqrt(sum(vec^2))
+  if(a==0) a <- .05
+  return(a)
 }
 
+BinarySearch <- function(argu,sumabs){
+  if(l2n(argu)==0 || sum(abs(argu/l2n(argu)))<=sumabs) return(0)
+  lam1 <- 0
+  lam2 <- max(abs(argu))-1e-5
+  iter <- 1
+  while(iter < 150){
+    su <- soft(argu,(lam1+lam2)/2)
+    if(sum(abs(su/l2n(su)))<sumabs){
+      lam2 <- (lam1+lam2)/2
+    } else {
+      lam1 <- (lam1+lam2)/2
+    }
+    if((lam2-lam1)<1e-6) return((lam1+lam2)/2)
+    iter <- iter+1
+  }
+  warning("Didn't quite converge")
+  return((lam1+lam2)/2)
+}
 
-CCAAlgorithm <- function(x,z,v,typex,typez,penaltyx,penaltyz,K,niter,trace,chromx,chromz,upos,uneg,vpos,vneg){
-  if(typez!="ordered"){
-    if(K>1) v.init <- v[apply(z^2,2,sum)!=0,]
-    if(K==1) v.init <- v[apply(z^2,2,sum)!=0]
+UpdateW <- function(xlist, i, K, sumabsthis, ws, type="standard", ws.final){
+  tots <- 0
+  for(j in (1:K)[-i]){
+    diagmat <- (t(ws.final[[i]])%*%t(xlist[[i]]))%*%(xlist[[j]]%*%ws.final[[j]])
+    diagmat[row(diagmat)!=col(diagmat)] <- 0
+    tots <- tots + t(xlist[[i]])%*%(xlist[[j]]%*%ws[[j]]) - ws.final[[i]]%*%(diagmat%*%(t(ws.final[[j]])%*%ws[[j]]))
+  }
+  if(type=="standard"){
+    sumabsthis <- BinarySearch(tots, sumabsthis)
+    w <- soft(tots, sumabsthis)/l2n(soft(tots, sumabsthis))
   } else {
-    v.init <- v
+    tots <- as.numeric(tots)
+    tots <- tots/mean(abs(tots)) 
+    w <- FLSA(tots,lambda1=sumabsthis,lambda2=sumabsthis)[1,1,]
+#    flsa.out <- diag.fused.lasso.new(tots,lam1=sumabsthis)
+#    lam2ind <- which.min(abs(flsa.out$lam2-sumabsthis))
+#    w <- flsa.out$coef[,lam2ind]
+    w <- w/l2n(w)
+    w[is.na(w)] <- 0
   }
-  v.init <- matrix(v.init,ncol=K)
-  u=v=d=NULL
-  xres <- x; zres <- z
-  if(typex!="ordered") xres <- x[,apply(x^2,2,sum)!=0]
-  if(typez!="ordered") zres <- z[,apply(z^2,2,sum)!=0]
+  return(w)
+}
+
+GetCrit <- function(xlist, ws, K){
+  crit <- 0
+  for(i in 2:K){
+    for(j in 1:(i-1)){
+      crit <- crit + t(ws[[i]])%*%t(xlist[[i]])%*%xlist[[j]]%*%ws[[j]]
+    }
+  }
+  return(crit)
+}
+
+GetCors <- function(xlist, ws, K){
+  cors <- 0
+  for(i in 2:K){
+    for(j in 1:(i-1)){
+      thiscor  <-  cor(xlist[[i]]%*%ws[[i]], xlist[[j]]%*%ws[[j]])
+      if(is.na(thiscor)) thiscor <- 0
+      cors <- cors + thiscor
+    }
+  }
+  return(cors)
+}
+
+
+ftrans <- function(x){ return(.5*log((1+x)/(1-x))) }
+
+sup_MultiCCA.permute <- function(xlist_raw, y, outcome, penalties=NULL, ws=NULL, type="standard", nperms=25, niter=3, trace=TRUE, standardize=TRUE){
+  call <- match.call()
+  K <- length(xlist_raw)
   for(k in 1:K){
-    if(vpos && sum(abs(v.init[v.init[,k]>0,k]))<sum(abs(v.init[v.init[,k]<0,k]))) v.init[,k] <- -v.init[,k]
-    if(vneg && sum(abs(v.init[v.init[,k]<0,k]))<sum(abs(v.init[v.init[,k]>0,k]))) v.init[,k] <- -v.init[,k]
-    out <- SparseCCA(xres,zres,v.init[,k],typex,typez,penaltyx, penaltyz,niter,trace, upos, uneg, vpos, vneg,chromx,chromz)
-    coef <- out$d 
-    d <- c(d, coef)
-    xres <- rbind(xres, sqrt(coef)*t(out$u))
-    zres <- rbind(zres, -sqrt(coef)*t(out$v))
-    u <- cbind(u, out$u)
-    v <- cbind(v, out$v)
+    if(ncol(xlist_raw[[k]])<2) stop("Need at least 2 features in each data set!")
+    if(standardize) xlist_raw[[k]] <- scale(xlist_raw[[k]], T, T)
   }
-  ubig <- u
-  vbig <- v
-  if(typex!="ordered"){
-    ubig <- matrix(0,nrow=ncol(x),ncol=K)
-    ubig[apply(x^2,2,sum)!=0,] <- u
-  }
-  if(typez!="ordered"){
-    vbig <- matrix(0,nrow=ncol(z),ncol=K)
-    vbig[apply(z^2,2,sum)!=0,] <- v
-  }
-  return(list(u=ubig,v=vbig,d=d))
-}
+  if(length(type)==1) type <- rep(type, K) # If type is just a single element, expand to make a vector of length(xlist_raw)
+          # Or type can have standard/ordered for each elt of xlist_raw
+  if(length(type)!=K) stop("Type must be a vector of length 1, or length(xlist_raw)")
+  if(sum(type!="standard" & type!="ordered")>0) stop("Each element of type must be standard or ordered.")
 
-fastsvd <- function(x,z){
-  # fast svd of t(x)%*%z, where ncol(x)>>nrow(x) and same for z
-  xx=x%*%t(x)
-  xx2=msqrt(xx)
-  y=t(z)%*%xx2
-  a=try(svd(y), silent=TRUE)
-  iter <- 1
-  if(class(a)=="try-error" && iter<10){
-    a=try(svd(y), silent=TRUE)
-    iter <- iter+1
-  }
-  if(iter==10) stop("too many tries.")
-  v=a$u
-  d=a$d
-  zz=z%*%t(z)
-  zz2=msqrt(zz)
-  y=t(x)%*%zz2
-  a=try(svd(y), silent=TRUE)
-  iter <- 1
-  if(class(a)=="try-error" && iter<10){
-    a=try(svd(y), silent=TRUE)
-    iter <- iter+1
-  }
-  if(iter==10) stop("too many tries.")
-  u=a$u
-  return(list(u=u,v=v,d=d))
-}
+  filter_out = MultiCCA.Phenotype.ZeroSome(xlist_raw, y, qt=.8, cens=NULL, outcome=outcome, type)
+  xlist = filter_out$xlist_sel
+  feature_dropped = filter_out$feature_dropped
+  # print("step I")
+  # print(dim(xlist[[1]]))
+  # print(dim(xlist[[2]]))
 
-msqrt <- function(x){
-  eigenx <- eigen(x)
-  return(eigenx$vectors%*%diag(sqrt(pmax(0,eigenx$values)))%*%t(eigenx$vectors))
-}
-
-
-
-
-SparseCCA <- function(x,y,v,typex,typez,penaltyx, penaltyz,niter,trace, upos, uneg, vpos, vneg,chromx,chromz){
-  vold <- rnorm(length(v))
-  u <- rnorm(ncol(x))
-  for(i in 1:niter){
-    if(sum(is.na(u))>0 || sum(is.na(v))>0){
-      v <- rep(0, length(v))
-      vold <- v
-    }
-    if(sum(abs(vold-v))>1e-6){
-      if(trace) cat(i,fill=F)
-      # Update u #
-      unew <- rep(NA, ncol(x))
-      if(typex=="standard"){
-        #argu <- t(x)%*%(y%*%v)
-        argu <- matrix(y%*%v,nrow=1)%*%x
-        if(upos) argu <- pmax(argu,0)
-        if(uneg) argu <- pmin(argu,0)
-        lamu <- BinarySearch(argu,penaltyx*sqrt(ncol(x)))
-        su <- soft(argu,lamu)
-        u <-  matrix(su/l2n(su), ncol=1)
-      }else if(typex=="ordered"){
-        yv <- y%*%v 
-        if(is.null(chromx)) chromx <- rep(1, ncol(x))
-        for(j in unique(chromx)){
-          xyv <- as.numeric(t(yv)%*%x[,chromx==j])#as.numeric(t(x[,chromx==j])%*%yv)
-          if(penaltyx!=0){
-            coefs <- FLSA(xyv/l2n(xyv),lambda1=penaltyx,lambda2=penaltyx)
-#            diagfl.out <- diag.fused.lasso.new(xyv/l2n(xyv), lam1=penaltyx)
-#            lam2ind <- which.min(abs(diagfl.out$lam2-penaltyx))
-#            coefs <- diagfl.out$coef[,lam2ind]
-          }
-          if(penaltyx==0){
-            coefs <- xyv/l2n(xyv)
-          }
-          unew[chromx==j] <- coefs
-        }
-        u <- unew
-        if(sum(is.na(u))==0 && sum(abs(u))>0) u <- u/l2n(u)
-        u <- matrix(u,ncol=1)
-      }
-      # Done updating u #
-      # Update v #
-      vnew <- rep(NA, ncol(y))
-      if(typez=="standard"){
-        vold <- v
-        #argv <- (t(u)%*%t(x))%*%y
-        argv <- matrix(x%*%u,nrow=1)%*%y
-        if(vpos) argv <- pmax(argv,0)
-        if(vneg) argv <- pmin(argv,0)
-        lamv <- BinarySearch(argv,penaltyz*sqrt(ncol(y)))
-        sv <- soft(argv, lamv)
-        v <-  matrix(sv/l2n(sv),ncol=1)
-      } else if (typez=="ordered"){
-        xu <- x%*%u
-        if(is.null(chromz)) chromz <- rep(1, ncol(y))
-        for(j in unique(chromz)){
-          yxu <- as.numeric(t(xu)%*%y[,chromz==j])#as.numeric(t(y[,chromz==j])%*%xu)
-          if(penaltyz!=0){
-            coefs <- FLSA(yxu/l2n(yxu),lambda1=penaltyz,lambda2=penaltyz)
-#            diagfl.out <- diag.fused.lasso.new(yxu/l2n(yxu), lam1=penaltyz)
-#            lam2ind <- which.min(abs(diagfl.out$lam2-penaltyz))
-#            coefs <- diagfl.out$coef[,lam2ind]
-          }
-          if(penaltyz==0){
-            coefs <- yxu/l2n(yxu)
-          }
-          vnew[chromz==j] <- coefs
-        }
-        v <- vnew
-        if(sum(is.na(v))==0 && sum(abs(v))>0) v <- v/l2n(v)
-        v <- matrix(v,ncol=1)
-      }
-      # Done updating v #
-    }
-  }
-  if(trace) cat(fill=T)
-  # Update d #
-  d <-  sum((x%*%u)*(y%*%v))
-  # Done updating d #
-  if(sum(is.na(u))>0 || sum(is.na(v))>0){
-    u <- matrix(rep(0,ncol(x)),ncol=1)
-    v <- matrix(rep(0,ncol(y)),ncol=1)
-    d <- 0
-  }
-  return(list(u=u,v=v,d=d))
-}
-
-CheckVs <- function(v,x,z,K){ # If v is NULL, then get v as appropriate.
-  if(!is.null(v) && !is.matrix(v)) v <- matrix(v,nrow=ncol(z))
-  if(!is.null(v) && ncol(v)<K) v <- NULL
-  if(!is.null(v) && ncol(v)>K) v <- matrix(v[,1:K],ncol=K)
-  if(is.null(v) && ncol(z)>nrow(z) && ncol(x)>nrow(x)){
-    v <- try(matrix(fastsvd(x,z)$v[,1:K],ncol=K), silent=TRUE)
-    attempt <- 1
-    while(class(v)=="try-error" && attempt < 10){
-      v <- try(matrix(fastsvd(x,z)$v[,1:K],ncol=K), silent=TRUE)
-      attempt <- attempt+1
-    }
-    if(attempt==10) stop("Problem computing SVD.")
-  } else if (is.null(v) && (ncol(z)<=nrow(z) || ncol(x)<=nrow(x))){
-    attempt <- 1
-    v <- try(matrix(svd(t(x)%*%z)$v[,1:K],ncol=K), silent=TRUE)    
-    while(class(v)=="try-error" && attempt<10){
-      v <- try(matrix(svd(t(x)%*%z)$v[,1:K],ncol=K), silent=TRUE)
-      attempt <- attempt+1
-    }
-    if(attempt==10) stop("Problem computing SVD.")
-  }
-  return(v)
-}
-
-
-ftrans <- function(a){
-  return(log((1+a)/(1-a)))
-}
-
-
-
-CCA.permute.both <- function(x,z,typex,typez,penaltyxs,penaltyzs,niter,v,trace,nperms,standardize,chromx,chromz,upos,uneg,vpos,vneg,outcome,y,cens){
-  call <- match.call()
-  if(standardize){
-    x <- scale(x,TRUE,TRUE)
-    z <- scale(z,TRUE,TRUE)
-  }
-  v <- CheckVs(v,x,z,1)
-  ccperms=nnonzerous.perms=nnonzerovs.perms=matrix(NA, length(penaltyxs), nperms)
-  ccs=nnonzerous=nnonzerovs=numeric(length(penaltyxs))
-  for(i in 1:nperms){
-    if(trace && .Platform$OS.type!="windows") cat("\n Permutation ",i," out of ", nperms, " ")
-    if(trace && .Platform$OS.type=="windows" && i==1) pb <- winProgressBar(title="Doing Permutations", min=0, max=1, initial=(i/nperms))
-    if(trace && .Platform$OS.type=="windows" && i>1) setWinProgressBar(pb, value=(i/nperms)) 
-    sampz <- sample(1:nrow(z))
-    sampx <- sample(1:nrow(x))
-    for(j in 1:length(penaltyxs)){
-      if(trace && .Platform$OS.type!="windows") cat(j,fill=FALSE)
-      if(i==1){
-        out <- CCA(x,z,typex=typex,typez=typez,penaltyx=penaltyxs[j], penaltyz=penaltyzs[j],y=y,outcome=outcome,cens=cens,niter=niter,v=v,trace=FALSE, upos=upos, uneg=uneg, vpos=vpos, vneg=vneg, standardize=FALSE,chromz=chromz,chromx=chromx)
-        nnonzerous[j] <- sum(out$u!=0)
-        nnonzerovs[j] <- sum(out$v!=0)
-        if(mean(out$u==0)!=1 && mean(out$v==0)!=1){
-          ccs[j] <- cor(x%*%out$u,z%*%out$v)
-        } else {
-          ccs[j] <- 0
-        }
-      }
-      out <- CCA(x[sampx,],z[sampz,],typex=typex,typez=typez,penaltyx=penaltyxs[j], penaltyz=penaltyzs[j],y=y,outcome=outcome,cens=cens,niter=niter,v=v,trace=FALSE, upos=upos, uneg=uneg, vpos=vpos, vneg=vneg, standardize=FALSE,chromz=chromz,chromx=chromx)
-      nnonzerous.perms[j,i] <- sum(out$u!=0)
-      nnonzerovs.perms[j,i] <- sum(out$v!=0)
-      if(mean(out$u==0)!=1 && mean(out$v==0)!=1){
-        ccperms[j,i] <- cor(x[sampx,]%*%out$u,z[sampz,]%*%out$v)
+  if(is.null(penalties)){
+    if(sum(type=="ordered")==K) stop("Do not run MultiCCA.permute with only ordered data sets and penalties unspecified,
+                                      since we only choose tuning the parameter via permutations when type='standard'.")
+    penalties <- matrix(NA, nrow=K, ncol=10)
+    for(k in 1:K){
+      if(type[k]=="ordered"){
+        lam <- ChooseLambda1Lambda2(svd(xlist[[k]])$v[,1])
+        penalties[k,] <- lam
       } else {
-        ccperms[j,i] <- 0
+        penalties[k,] <- pmax(seq(.1, .8, len=10) * sqrt(ncol(xlist[[k]])),1.1)
       }
     }
   }
-  if(trace && .Platform$OS.type=="windows") close(pb)
-  cc.norm <- ftrans(ccs)
-  ccperm.norm <- ftrans(ccperms)
-  zstats <- (cc.norm - rowMeans(ccperm.norm))/(apply(ccperm.norm,1,sd) + .05)
-    # 0.05 added to the denominator to avoid getting zstat of INFINITY
-  if(trace) cat(fill=T)
-  pvals <- apply(sweep(ccperms,1,ccs,"-")>=0,1,mean)
-  results <- list(zstats=zstats,penaltyxs=penaltyxs, penaltyzs=penaltyzs,bestpenaltyx=penaltyxs[which.max(zstats)], bestpenaltyz=penaltyzs[which.max(zstats)], cors=ccs, corperms=ccperms, ft.cors=cc.norm,ft.corperms=rowMeans(ccperm.norm),nnonzerous=nnonzerous,nnonzerovs=nnonzerovs, nnonzerous.perm=rowMeans(nnonzerous.perms),nnonzerovs.perm=rowMeans(nnonzerovs.perms),call=call,v.init=v,pvals=pvals,nperms=nperms,chromz=chromz,chromx=chromx,typex=typex,typez=typez, pvalbestz=pvals[which.max(zstats)])
-  return(results)
-}
-
-
-  
-plot.CCA.permute <- function(x,...){
-  penaltyxs <- x$penaltyxs
-  penaltyzs <- x$penaltyzs
-  if(length(penaltyxs)==1 && length(penaltyzs)==1) stop("Cannot plot output of CCA.permute if only 1 tuning parameter was considered.")
-  ccs <- x$cors
-  nperms <- x$nperms
-  zstats <- x$zstats
-  ccperms <- x$corperms
-  par(mfrow=c(2,1))
-  if(length(unique(penaltyxs))==1 && length(unique(penaltyzs))>1){
-    plot(penaltyzs, ccs, main="Correlations For Real/Permuted Data", xlab="Penalty on data set 2", ylab="Correlations", ylim=range(ccperms,ccs))
-    points(penaltyzs, ccs, type="l")
-    for(i in 1:nperms) points(penaltyzs, ccperms[,i], col="green")
-    plot(penaltyzs,zstats,main="Z-Statistics", xlab="Penalty on data set 2", ylab="Z-statistic")
-    lines(penaltyzs,zstats)
+  numnonzeros <- NULL
+  if(!is.matrix(penalties)) penalties <- matrix(1,nrow=K,ncol=1)%*%matrix(penalties,nrow=1)
+  permcors <- matrix(NA, nrow=nperms, ncol=ncol(penalties))
+  cors <- numeric(ncol(penalties)) 
+  for(i in 1:ncol(penalties)){
+    out <- MultiCCA(xlist, penalty=penalties[,i], niter=niter, type=type, ws=ws, trace=trace)
+    # ws_tmp = out$ws
+    # ws1 = ws_tmp[[1]]
+    # ws2 = ws_tmp[[2]]
+    # print("step II")
+    # print(dim(ws1))
+    # print(dim(ws2))
+    # print(dim(xlist[[1]]))
+    # print(dim(xlist[[2]]))
+    cors[i] <- GetCors(xlist, out$ws, K)
+    numnonzeros <- c(numnonzeros, sum(out$numnonzeros))
+    ws.init  <- out$ws.init
   }
-  if(length(unique(penaltyzs))==1 && length(unique(penaltyxs))>1){
-    plot(penaltyxs, ccs, main="Correlations For Real/Permuted Data", xlab="Penalty on data set 1", ylab="Correlations", ylim=range(ccperms,ccs))
-    points(penaltyxs, ccs, type="l")
-    for(i in 1:nperms) points(penaltyxs, ccperms[,i], col="green")
-    plot(penaltyxs,zstats,main="Z-Statistics", xlab="Penalty on data set 1", ylab="Z-statistic")
-    lines(penaltyxs,zstats)
-  }
-  if(length(unique(penaltyzs))>1 && length(unique(penaltyxs))>1 && sum(penaltyxs!=penaltyzs)>0){
-    plot(1:length(penaltyxs), ccs, main="Correlations For Real/Permuted Data", xlab="Index of Tuning Parameters Considered", ylab="Correlations", ylim=range(ccperms,ccs))
-    points(1:length(penaltyxs), ccs, type="l")
-    for(i in 1:nperms) points(1:length(penaltyxs), ccperms[,i], col="green")
-    plot(1:length(penaltyxs),zstats,main="Z-Statistics", xlab="Index of Tuning Parameters Considered", ylab="Z-statistic")
-    lines(1:length(penaltyxs),zstats)
-  }
-  if(length(unique(penaltyzs))>1 && length(unique(penaltyxs))>1 && sum(penaltyxs!=penaltyzs)==0){
-    plot(penaltyxs, ccs, main="Correlations For Real/Permuted Data", xlab="Penalty on data sets 1 and 2", ylab="Correlations", ylim=range(ccperms,ccs))
-    points(penaltyxs, ccs, type="l")
-    for(i in 1:nperms) points(penaltyxs, ccperms[,i], col="green")
-    plot(penaltyxs,zstats,main="Z-Statistics", xlab="Penalty on data sets 1 and 2", ylab="Z-statistic")
-    lines(penaltyxs,zstats)
-  }
-}
-
-CCA.permute.zonly<- function(x,z,typex,typez,penaltyx,penaltyzs,niter,v,trace,nperms,standardize,chromx,chromz,upos,uneg,vpos,vneg,outcome,y,cens){
-  call <- match.call()
-  if(standardize){
-    x <- scale(x,TRUE,TRUE)
-    z <- scale(z, TRUE, TRUE)
-  }
-  v <- CheckVs(v,x,z,1)
-  ccperms=nnonzerous.perms=nnonzerovs.perms=matrix(NA, length(penaltyzs), nperms)
-  ccs=nnonzerous=nnonzerovs=numeric(length(penaltyzs))
-  storevs <- NULL
-  for(i in 1:nperms){
-        if(trace && .Platform$OS.type!="windows") cat("\n Permutation ",i," out of ", nperms, " ")
-    if(trace && .Platform$OS.type=="windows" && i==1) pb <- winProgressBar(title="Doing Permutations", min=0, max=1, initial=(i/nperms))
-    if(trace && .Platform$OS.type=="windows" && i>1) setWinProgressBar(pb, value=(i/nperms)) 
-    sampz <- sample(1:nrow(z))
-    sampx <- sample(1:nrow(x))
-    for(j in 1:length(penaltyzs)){
-      if(trace && .Platform$OS.type!="windows") cat(j,fill=FALSE)
-      if(i==1){
-        out <- CCA(x,z,typex=typex,typez=typez,penaltyx=penaltyx, penaltyz=penaltyzs[j],y=y,outcome=outcome,cens=cens,niter=niter,v=v,trace=FALSE, upos=upos, uneg=uneg, vpos=vpos, vneg=vneg, standardize=FALSE,chromz=chromz,chromx=chromx)
-        nnonzerous[j] <- sum(out$u!=0)
-        nnonzerovs[j] <- sum(out$v!=0)
-        if(mean(out$u==0)!=1 && mean(out$v==0)!=1){
-          ccs[j] <- cor(x%*%out$u,z%*%out$v)
-        } else {
-          ccs[j] <- 0
-        }
-        storevs <- cbind(storevs, out$v)
-      }
-      out <- CCA(x[sampx,],z[sampz,],typex=typex,typez=typez,penaltyx=penaltyx, penaltyz=penaltyzs[j],y=y,outcome=outcome,cens=cens,niter=niter,v=v,trace=FALSE, upos=upos, uneg=uneg, vpos=vpos, vneg=vneg, standardize=FALSE,chromx=chromx,chromz=chromz)
-      nnonzerous.perms[j,i] <- sum(out$u!=0)
-      nnonzerovs.perms[j,i] <- sum(out$v!=0)
-      if(mean(out$u==0)!=1 && mean(out$v==0)!=1){
-        ccperms[j,i] <- cor(x[sampx,]%*%out$u,z[sampz,]%*%out$v)
-      } else {
-        ccperms[j,i] <- 0
-      }
+  cat(fill=TRUE)
+  for(j in 1:nperms){
+    if(trace) cat("Permutation ", j, "of " , nperms ,fill=TRUE)
+    xlistperm <- xlist
+    for(k in 1:K){
+      xlistperm[[k]] <- xlistperm[[k]][sample(1:nrow(xlistperm[[k]])),]
+    }
+    for(i in 1:ncol(penalties)){
+      out <- MultiCCA(xlistperm, penalty=penalties[,i], niter=niter, type=type, ws=ws, trace=FALSE)
+      permcors[j,i] <- GetCors(xlistperm, out$ws, K)
     }
   }
-  if(trace && .Platform$OS.type=="windows") close(pb)
-  cc.norm <- ftrans(ccs)
-  ccperm.norm <- ftrans(ccperms)
-  zstats <- (cc.norm - rowMeans(ccperm.norm))/(apply(ccperm.norm,1,sd) + .05)
-  if(trace) cat(fill=T)
-  pvals <- apply(sweep(ccperms,1,ccs,"-")>=0,1,mean)
-  results <- list(zstats=zstats,typex=typex,typez=typez,penaltyxs=rep(penaltyx,length(penaltyzs)),penaltyzs=penaltyzs,bestpenaltyx=penaltyx,bestpenaltyz=penaltyzs[which.max(zstats)], cors=ccs, corperms=ccperms, ft.cors=cc.norm,ft.corperms=rowMeans(ccperm.norm),nnonzerous=nnonzerous,nnonzerovs=nnonzerovs, nnonzerous.perm=rowMeans(nnonzerous.perms),nnonzerovs.perm=rowMeans(nnonzerovs.perms),call=call,v.init=v, pvals=pvals,nperms=nperms,chromx=chromx,chromz=chromz,storevs=storevs, outcome=outcome, pvalbestz=pvals[which.max(zstats)])
-  return(results)
-}
-
-CCA.permute.justone <- function(x,z,typex,typez,penaltyx,penaltyz,niter,v,trace,nperms,standardize,chromx,chromz,upos,uneg,vpos,vneg,outcome,y,cens){
-  call <- match.call()
-  if(standardize){
-    x <- scale(x,TRUE,TRUE)
-    z <- scale(z, TRUE, TRUE)
+  pvals =zs =  NULL
+  for(i in 1:ncol(penalties)){
+    pvals <- c(pvals, mean(permcors[,i]>=cors[i]))
+    zs <- c(zs, (cors[i]-mean(permcors[,i]))/(sd(permcors[,i])+.05))
   }
-  v <- CheckVs(v,x,z,1)
-  storevs <- NULL
-  for(i in 1:nperms){
-        if(trace && .Platform$OS.type!="windows") cat("\n Permutation ",i," out of ", nperms, " ")
-    if(trace && .Platform$OS.type=="windows" && i==1) pb <- winProgressBar(title="Doing Permutations", min=0, max=1, initial=(i/nperms))
-    if(trace && .Platform$OS.type=="windows" && i>1) setWinProgressBar(pb, value=(i/nperms))
-    sampz <- sample(1:nrow(z))
-    sampx <- sample(1:nrow(x))
-      if(i==1){
-        out <- CCA(x,z,typex=typex,typez=typez,penaltyx=penaltyx, penaltyz=penaltyz,y=y,outcome=outcome,cens=cens,niter=niter,v=v,trace=FALSE, upos=upos, uneg=uneg, vpos=vpos, vneg=vneg, standardize=FALSE,chromz=chromz,chromx=chromx)
-  ccperms=nnonzerous.perms=nnonzerovs.perms=rep(NA, nperms)
-        nnonzerou <- sum(out$u!=0)
-        nnonzerov <- sum(out$v!=0)
-        if(mean(out$u==0)!=1 && mean(out$v==0)!=1){
-          cc <- cor(x%*%out$u,z%*%out$v)
-        } else {
-          cc <- 0
-        }
-        storevs <- cbind(storevs, out$v)
-      }
-      out <- CCA(x[sampx,],z[sampz,],typex=typex,typez=typez,penaltyx=penaltyx, penaltyz=penaltyz,y=y,outcome=outcome,cens=cens,niter=niter,v=v,trace=FALSE, upos=upos, uneg=uneg, vpos=vpos, vneg=vneg, standardize=FALSE,chromx=chromx,chromz=chromz)
-      nnonzerous.perms[i] <- sum(out$u!=0)
-      nnonzerovs.perms[i] <- sum(out$v!=0)
-      if(mean(out$u==0)!=1 && mean(out$v==0)!=1){
-        ccperms[i] <- cor(x[sampx,]%*%out$u,z[sampz,]%*%out$v)
-      } else {
-        ccperms[i] <- 0
-      }
-    }
-  if(trace && .Platform$OS.type=="windows") close(pb)
-  cc.norm <- ftrans(cc)
-  ccperm.norms <- ftrans(ccperms)
-  zstat <- (cc.norm - mean(ccperm.norms))/(sd(ccperm.norms) + .05)
-  if(trace) cat(fill=T)
-  cc <- as.numeric(cc)
-  ccperms <- as.numeric(ccperms)
-  pval <- mean(ccperms>=cc)
-  results <- list(zstats=zstat,typex=typex,typez=typez,penaltyxs=penaltyx, penaltyzs=penaltyz,bestpenaltyx=penaltyx,bestpenaltyz=penaltyz, cors=cc, corperms=ccperms, ft.cors=cc.norm,ft.corperms=mean(ccperm.norms),nnonzerous=nnonzerou,nnonzerovs=nnonzerov, nnonzerous.perm=mean(nnonzerous.perms),nnonzerovs.perm=mean(nnonzerovs.perms),call=call,v.init=v, pvals=pval,nperms=nperms,chromx=chromx,chromz=chromz,storevs=storevs, outcome=outcome, pvalbestz=pval)
-  return(results)
-}
-
-
-CCA.permute.xonly<- function(x,z,typex,typez,penaltyxs,penaltyz,niter,v,trace,nperms=25,standardize,chromx,chromz,upos,uneg,vpos,vneg,outcome,y,cens){
-  call <- match.call()
-  if(standardize){
-    x <- scale(x,TRUE,TRUE)
-    z <- scale(z, TRUE, TRUE)
-  }
-  v <- CheckVs(v,x,z,1)
-  ccperms=nnonzerous.perms=nnonzerovs.perms=matrix(NA, length(penaltyxs), nperms)
-  ccs=nnonzerous=nnonzerovs=numeric(length(penaltyxs))
-  storevs <- NULL
-  for(i in 1:nperms){
-    if(trace && .Platform$OS.type!="windows") cat("\n Permutation ",i," out of ", nperms, " ")
-    if(trace && .Platform$OS.type=="windows" && i==1) pb <- winProgressBar(title="Doing Permutations", min=0, max=1, initial=(i/nperms))
-    if(trace && .Platform$OS.type=="windows" && i>1) setWinProgressBar(pb, value=(i/nperms)) 
-    sampz <- sample(1:nrow(z))
-    sampx <- sample(1:nrow(x))
-    for(j in 1:length(penaltyxs)){
-      if(trace && .Platform$OS.type!="windows") cat(j,fill=FALSE)
-      if(i==1){
-        out <- CCA(x,z,typex=typex,typez=typez,penaltyx=penaltyxs[j], penaltyz=penaltyz,y=y,outcome=outcome,cens=cens,niter=niter,v=v,trace=FALSE, upos=upos, uneg=uneg, vpos=vpos, vneg=vneg, standardize=FALSE,chromz=chromz,chromx=chromx)
-        nnonzerous[j] <- sum(out$u!=0)
-        nnonzerovs[j] <- sum(out$v!=0)
-        if(mean(out$u==0)!=1 && mean(out$v==0)!=1){
-          ccs[j] <- cor(x%*%out$u,z%*%out$v)
-        } else {
-          ccs[j] <- 0
-        }
-        storevs <- cbind(storevs, out$v)
-      }
-      out <- CCA(x[sampx,],z[sampz,],typex=typex,typez=typez,penaltyx=penaltyxs[j], penaltyz=penaltyz,y=y,outcome=outcome,cens=cens,niter=niter,v=v,trace=FALSE, upos=upos, uneg=uneg, vpos=vpos, vneg=vneg, standardize=FALSE,chromx=chromx,chromz=chromz)
-      nnonzerous.perms[j,i] <- sum(out$u!=0)
-      nnonzerovs.perms[j,i] <- sum(out$v!=0)
-      if(mean(out$u==0)!=1 && mean(out$v==0)!=1){
-        ccperms[j,i] <- cor(x[sampx,]%*%out$u,z[sampz,]%*%out$v)
-      } else {
-        ccperms[j,i] <- 0
-      }
-    }
-  }
-  if(trace && .Platform$OS.type=="windows") close(pb)
-  cc.norm <- ftrans(ccs)
-  ccperm.norm <- ftrans(ccperms)
-  zstats <- (cc.norm - rowMeans(ccperm.norm))/(apply(ccperm.norm,1,sd) + .05)
-  if(trace) cat(fill=T)
-  pvals <- apply(sweep(ccperms,1,ccs,"-")>=0,1,mean)
-  results <- list(zstats=zstats,typex=typex,typez=typez,penaltyxs=penaltyxs,penaltyzs=rep(penaltyz, length(penaltyxs)),bestpenaltyx=penaltyxs[which.max(zstats)],bestpenaltyz=penaltyz, cors=ccs, corperms=ccperms, ft.cors=cc.norm,ft.corperms=rowMeans(ccperm.norm),nnonzerous=nnonzerous,nnonzerovs=nnonzerovs, nnonzerous.perm=rowMeans(nnonzerous.perms),nnonzerovs.perm=rowMeans(nnonzerovs.perms),call=call,v.init=v, pvals=pvals,nperms=nperms,chromx=chromx,chromz=chromz,storevs=storevs, outcome=outcome, pvalbestz=pvals[which.max(zstats)])
-  return(results)
-}
-
-
-
-CCA.permute <- function(x,z,typex=c("standard", "ordered"), typez=c("standard","ordered"), penaltyxs=NULL, penaltyzs=NULL, niter=3,v=NULL,trace=TRUE,nperms=25, standardize=TRUE, chromx=NULL, chromz=NULL,upos=FALSE, uneg=FALSE, vpos=FALSE, vneg=FALSE, outcome=NULL, y=NULL, cens=NULL){
-  if(ncol(x)<2) stop("Need at least 2 features in data set x.")
-  if(ncol(z)<2) stop("Need at least 2 features in data set z.")
-  u <- NULL
-  typex <- match.arg(typex)
-  typez <- match.arg(typez)
-  call <- match.call()
-  if(!is.null(penaltyxs) && !is.null(penaltyzs) && length(penaltyxs)>1 && length(penaltyzs)>1 && length(penaltyxs)!=length(penaltyzs)) stop("Penaltyxs and Penaltyzs must be same length, or one must have length 1. This is because tuning parameters are considered in pairs.")
-  if(is.null(penaltyxs) && typex=="ordered"){
-    u <- CheckVs(NULL,z,x,1)
-    penaltyxs <- c(ChooseLambda1Lambda2(as.numeric(u)))
-    warning("Since type of x is ordered, the penalty for x was chosen w/o permutations.")
-  }
-  if(is.null(penaltyzs) && typez=="ordered"){
-    v <- CheckVs(v,x,z,1)
-    penaltyzs <- c(ChooseLambda1Lambda2(as.numeric(v)))
-    warning("Since type of z is ordered, the penalty for z was chosen w/o permutations.")
-  }
-  if(is.null(penaltyxs)) penaltyxs <- seq(.1,.7,len=10)
-  if(is.null(penaltyzs)) penaltyzs <- seq(.1,.7,len=10)
-  if(typex=="ordered" && (upos||uneg)) stop("If type=ordered then you cannot require elements of u to be positive or negative!")
-  if(typez=="ordered" && (vpos||vneg)) stop("If type=ordered then you cannot require elements of v to be positive or negative!")
-  if(length(unique(penaltyxs))==1 && length(unique(penaltyzs))==1){
-    out <- CCA.permute.justone(x=x,z=z,typex=typex,typez=typez,penaltyx=penaltyxs[1],penaltyz=penaltyzs[1],niter=niter,v=v,trace=trace,nperms=nperms,standardize=standardize,chromx=chromx,chromz=chromz,upos=upos,uneg=uneg,vpos=vpos,vneg=vneg,outcome=outcome,y=y,cens=cens)
-  }
-  if(length(penaltyxs)==1 && length(penaltyzs)>1) out <- CCA.permute.zonly(x=x,z=z,typex=typex,typez=typez,penaltyx=penaltyxs,penaltyzs=penaltyzs,niter=niter,v=v,trace=trace,nperms=nperms,standardize=standardize,chromx=chromx,chromz=chromz,upos=upos,uneg=uneg,vpos=vpos,vneg=vneg,outcome=outcome,y=y,cens=cens)
-  if(length(penaltyxs)>1 && length(penaltyzs)==1) out <- CCA.permute.xonly(x=x,z=z,typex=typex,typez=typez,penaltyxs=penaltyxs,penaltyz=penaltyzs,niter=niter,v=v,trace=trace,nperms=nperms,standardize=standardize,chromx=chromx,chromz=chromz,upos=upos,uneg=uneg,vpos=vpos,vneg=vneg,outcome=outcome,y=y,cens=cens)
-  if(length(penaltyzs)>1 && length(penaltyxs)>1) out <- CCA.permute.both(x=x,z=z,typex=typex,typez=typez,penaltyxs=penaltyxs,penaltyzs=penaltyzs,niter=niter,v=v,trace=trace,nperms=nperms,standardize=standardize,chromx=chromx,chromz=chromz,upos=upos,uneg=uneg,vpos=vpos,vneg=vneg,outcome=outcome,y=y,cens=cens)
-  out$call <- call
-  out$upos <- upos
-  out$uneg <- uneg
-  out$vpos <- vpos
-  out$vneg <- vneg
-  class(out) <- "CCA.permute"
+  if(trace) cat(fill=TRUE)
+  out <- list(pvals=pvals, zstat=zs, bestpenalties=penalties[,which.max(zs)], cors=cors, corperms=permcors, numnonzeros=numnonzeros, ws.init=ws.init, call=call, penalties=penalties, type=type, nperms=nperms, xlist=xlist, feature_dropped=feature_dropped)
+  class(out) <- "sup_MultiCCA.permute"
   return(out)
+}
+
+sup_MultiCCA <- function(xlist, y, outcome, penalty=NULL, ws=NULL, niter=15, type="standard", ncomponents=1, trace=TRUE, standardize=TRUE){
+  for(i in 1:length(xlist_raw)){
+    if(ncol(xlist_raw[[i]])<2) stop("Need at least 2 features in each data set.")
+  }
+  call <- match.call()
+  K <- length(xlist_raw)
+  if(length(type)==1) type <- rep(type, K) # If type is just a single element, expand to make a vector of length(xlist_raw)
+          # Or type can have standard/ordered for each elt of xlist_raw
+  if(length(type)!=K) stop("Type must be a vector of length 1, or length(xlist_raw)")
+  if(sum(type!="standard" & type!="ordered") > 0) stop("Each element of type must be standard or ordered.")
+  
+  # xlist = MultiCCA.Phenotype.ZeroSome(xlist_raw, y, qt = .8, cens = NULL, outcome = outcome, type)
+
+  for(k in 1:K){
+    if(standardize) xlist[[k]] <- scale(xlist[[k]], T, T)
+  }
+  if(!is.null(ws)){
+    makenull <- FALSE
+    for(i in 1:K){
+      if(ncol(ws[[i]])<ncomponents) makenull <- TRUE
+    }
+    if(makenull) ws <- NULL
+  }
+  if(is.null(ws)){
+    ws <- list()
+    for(i in 1:K) ws[[i]] <- matrix(svd(xlist[[i]])$v[,1:ncomponents], ncol=ncomponents)
+  }
+  if(is.null(penalty)){
+    penalty <- rep(NA, K)
+    penalty[type=="standard"] <- 4 # this is the default value of sumabs
+    for(k in 1:K){
+      if(type[k]=="ordered"){
+        v <- svd(xlist[[k]])$v[,1]
+        penalty[k] <- ChooseLambda1Lambda2(v)
+      }
+    }
+  }
+  ws.init <- ws
+  if(length(penalty)==1) penalty <- rep(penalty, K)
+  if(sum(penalty<1 & type=="standard")) stop("Cannot constrain sum of absolute values of weights to be less than 1.")
+  for(i in 1:length(xlist)){
+    if(type[i]=="standard" && penalty[i]>sqrt(ncol(xlist[[i]]))) stop("L1 bound of weights should be no more than sqrt of the number of columns of the corresponding data set.", fill=TRUE)
+  }
+  ws.final <- list()
+  for(i in 1:length(ws)) ws.final[[i]] <- matrix(0, nrow=ncol(xlist[[i]]), ncol=ncomponents)
+  cors <- NULL
+  for(comp in 1:ncomponents){
+    ws <- list()
+    for(i in 1:length(ws.init)) ws[[i]] <- ws.init[[i]][,comp]
+    curiter <- 1
+    crit.old <- -10
+    crit <- -20
+    storecrits <- NULL
+    while(curiter<=niter && abs(crit.old-crit)/abs(crit.old)>.001 && crit.old!=0){
+      crit.old <- crit
+      crit <- GetCrit(xlist, ws, K)
+      storecrits <- c(storecrits,crit)
+      if(trace) cat(curiter, fill=FALSE)
+      curiter <- curiter+1
+      for(i in 1:K){
+        ws[[i]] <- UpdateW(xlist, i, K, penalty[i], ws, type[i], ws.final)
+      }
+    }
+    for(i in 1:length(ws)) ws.final[[i]][,comp] <- ws[[i]]
+    cors <- c(cors, GetCors(xlist, ws,K))
+  }
+  out <- list(ws=ws.final, ws.init=ws.init, K=K, call=call, type=type, penalty=penalty, cors=cors, xlist=xlist)
+  class(out) <- "sup_MultiCCA"
+  return(out)
+}
+
+MultiCCA.Phenotype.ZeroSome <- function(xlist,y,qt=.8,cens=NULL,outcome=c("quantitative", "survival", "multiclass"), type){
+  outcome <- match.arg(outcome)
+  K = length(xlist)
+  xlist_sel = list()
+  score_list = list()
+  for(k in 1:K) {
+    tmp_x = xlist[[k]]
+    if (outcome=="quantitative") {
+      score.x <- quantitative.func(t(tmp_x)[,!is.na(y)],y[!is.na(y)])$tt
+    } else if (outcome=="survival") {
+      score.x <- cox.func(t(tmp_x)[,!is.na(y)],y[!is.na(y)],cens[!is.na(y)])$tt
+    } else if (outcome=="multiclass") {
+      score.x <- multiclass.func(t(tmp_x)[,!is.na(y)],y[!is.na(y)])$tt
+    }
+    if(type[k] == "standard"){
+      # print(sum(is.na(score.x)))
+      keep.x <- abs(score.x) >= quantile(abs(score.x),qt)
+    } else if (type[k] == "ordered") {
+      lam <- ChooseLambda1Lambda2(as.numeric(score.x))
+      flsa.out <- FLSA(as.numeric(score.x),lambda1=lam, lambda2=lam)
+      par(mfrow=c(2,1))
+      keep.x <- abs(flsa.out)>=quantile(abs(flsa.out), qt)
+      if(mean(keep.x)==1 | mean(keep.x)==0) keep.x <- (abs(score.x) >= quantile(abs(score.x), qt))
+    }
+    xnew <- tmp_x
+    xnew[,!keep.x] <- 0
+    feature_dropped = colname(tmp_x)[!keep.x]
+    xnew_effec = xnew[, colSums(xnew != 0) > 0]
+    xlist_sel[[k]] = xnew_effec
+    score_list[[k]] = score.x
+  }
+  # return(list(xlist_sel=xlist_sel, score_list=score_list))
+  return(xlist_sel=xlist_sel, feature_dropped=feature_dropped)
 }
 
 CCAPhenotypeZeroSome <- function(x,z,y,qt=.8,cens=NULL,outcome=c("quantitative", "survival", "multiclass"), typex,typez){
@@ -583,9 +265,7 @@ CCAPhenotypeZeroSome <- function(x,z,y,qt=.8,cens=NULL,outcome=c("quantitative",
     score.x <- cox.func(t(x)[,!is.na(y)],y[!is.na(y)],cens[!is.na(y)])$tt
     score.z <- cox.func(t(z)[,!is.na(y)],y[!is.na(y)],cens[!is.na(y)])$tt
   } else if (outcome=="multiclass"){
-    a = multiclass.func(t(x)[,!is.na(y)],y[!is.na(y)])
     score.x <- multiclass.func(t(x)[,!is.na(y)],y[!is.na(y)])$tt
-    print(a)
     score.z <- multiclass.func(t(z)[,!is.na(y)],y[!is.na(y)])$tt
   }
   if(typex=="standard"){
@@ -612,12 +292,27 @@ CCAPhenotypeZeroSome <- function(x,z,y,qt=.8,cens=NULL,outcome=c("quantitative",
     keep.z <- abs(flsa.out)>=quantile(abs(flsa.out), qt)
     if(mean(keep.z)==1 | mean(keep.z)==0) keep.z <- (abs(score.z) >= quantile(abs(score.z), qt))
   }
+  # print(score.x)
+  # print(score.z)
   xnew <- x
   xnew[,!keep.x] <- 0
   znew <- z
   znew[,!keep.z] <- 0
-  return(list(x=xnew,z=znew))
-}      
+  return(list(x=xnew,z=znew, xscore=score.x, zscore=score.z))
+}
+
+varr <- function(x, meanx=NULL){
+    n <- ncol(x)
+      p <- nrow(x)
+      Y <-matrix(1,nrow=n,ncol=1)
+      if(is.null(meanx)){   meanx <- rowMeans(x)}
+      ans<- rep(1, p)
+      xdif <- x - meanx %*% t(Y)
+      ans <- (xdif^2) %*% rep(1/(n - 1), n)
+      ans <- drop(ans)
+      return(ans)
+
+  }
 
 quantitative.func  <- function(x,y,s0=0){
 
@@ -664,34 +359,3 @@ multiclass.func <- function(x,y,s0=0){
 
 }
 
-BinarySearch <- function(argu,sumabs){
-  if(l2n(argu)==0 || sum(abs(argu/l2n(argu)))<=sumabs) return(0)
-  lam1 <- 0
-  lam2 <- max(abs(argu))-1e-5
-  iter <- 1
-  while(iter < 150){
-    su <- soft(argu,(lam1+lam2)/2)
-    if(sum(abs(su/l2n(su)))<sumabs){
-      lam2 <- (lam1+lam2)/2
-    } else {
-      lam1 <- (lam1+lam2)/2
-    }
-    if((lam2-lam1)<1e-6) return((lam1+lam2)/2)
-    iter <- iter+1
-  }
-  warning("Didn't quite converge")
-  return((lam1+lam2)/2)
-}
-
-varr <- function(x, meanx=NULL){
-    n <- ncol(x)
-      p <- nrow(x)
-      Y <-matrix(1,nrow=n,ncol=1)
-      if(is.null(meanx)){   meanx <- rowMeans(x)}
-      ans<- rep(1, p)
-      xdif <- x - meanx %*% t(Y)
-      ans <- (xdif^2) %*% rep(1/(n - 1), n)
-      ans <- drop(ans)
-      return(ans)
-
-  }
