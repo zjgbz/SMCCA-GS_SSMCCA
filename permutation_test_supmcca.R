@@ -197,7 +197,8 @@ for (matrix_seed in matrix_seed_vec) {
 			# assay_cor_plot(x2, rep, output_dir, "cor-x2", existed_image_prefix)
 			# assay_cor_plot(x1_x2, rep, output_dir, "cor-x1-x2", existed_image_prefix)
 
-			fullMCCA = MultiCCA.permute(input_list)
+			fullMCCA = sup_MultiCCA.permute(input_list)
+			input_list_select = fullMCCA$xlist
 			save.image(file=existed_image_dir_filename)
 		} else if (file.exists(existed_image_dir_filename)) {
 			load(existed_image_dir_filename)
@@ -216,7 +217,7 @@ for (matrix_seed in matrix_seed_vec) {
 		existed_perm_dir_filename = file.path(output_dir, existed_perm_filename)
 		if (!file.exists(existed_perm_dir_filename)) {
 			cors = matrix(NA, nrow = 1, ncol = ncomp)
-			out = MultiCCA(input_list, penalty = fullMCCA$bestpenalties, ncomponents = ncomp)
+			out = MultiCCA(input_list_select, penalty = fullMCCA$bestpenalties, ncomponents = ncomp)
 			fullcca_time <- Sys.time()
 
 			w1 = out$ws[[1]]
@@ -260,7 +261,7 @@ for (matrix_seed in matrix_seed_vec) {
 
 			set.seed(perm_seed)
 			for (perm_i in 1:nperm_test) {
-			    xlistperm <- input_list
+			    xlistperm <- input_list_select
 			    for(k in 1:K){
 			      xlistperm[[k]] <- xlistperm[[k]][sample(1:nrow(xlistperm[[k]])),]
 			    }
