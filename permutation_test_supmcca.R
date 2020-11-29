@@ -199,7 +199,7 @@ for (matrix_seed in matrix_seed_vec) {
 			# assay_cor_plot(x2, rep, output_dir, "cor-x2", existed_image_prefix)
 			# assay_cor_plot(x1_x2, rep, output_dir, "cor-x1-x2", existed_image_prefix)
 
-			fullMCCA = sup_MultiCCA.permute(input_list)
+			fullMCCA = sup_MultiCCA.permute(xlist_raw = input_list, y = y, outcome = "quantitative")
 			input_list_select = fullMCCA$xlist
 			save.image(file=existed_image_dir_filename)
 		} else if (file.exists(existed_image_dir_filename)) {
