@@ -247,8 +247,8 @@ for (matrix_seed in matrix_seed_vec) {
 			legend(x = "right", legend = rownames(contrib_w2_forbar), fill = mycols)
 			dev.off()
 	
-			cv1_raw = scale(x1, T, T) %*% w1
-			cv2_raw = scale(x2, T, T) %*% w2
+			cv1_raw = scale(input_list_select[[1]], T, T) %*% w1
+			cv2_raw = scale(input_list_select[[2]], T, T) %*% w2
 			cv1 = rehead_mat(cv1_raw, "cv1")
 			cv2 = rehead_mat(cv2_raw, "cv2")
 			cv1_cv2 = cbind(cv1, cv2)
