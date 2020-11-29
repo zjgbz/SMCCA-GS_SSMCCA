@@ -137,12 +137,14 @@ rehead_mat <- function(mat, head_prefix) {
 	return (mat)
 }
 
-args = commandArgs(trailingOnly=TRUE)
-cca_seed = as.numeric(args[1])
-feature_factor = as.numeric(args[2])
+# args = commandArgs(trailingOnly=TRUE)
+# cca_seed = as.numeric(args[1])
+# feature_factor = as.numeric(args[2])
+
+cca_seed = 1
+feature_factor = 1
 
 size_factor = 100
-# feature_factor = 1
 nrow = 4 * size_factor
 ncol_rel = 5
 rep = 1 * size_factor * feature_factor
