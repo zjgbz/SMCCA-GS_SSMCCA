@@ -29,6 +29,18 @@ BinarySearch <- function(argu,sumabs){
   return((lam1+lam2)/2)
 }
 
+df_list2matrix <- function(xlist_input, K) {
+  xlist = list()
+  for (k in 1:K) {
+    if (is.data.frame(xlist_input[[k]])) {
+      xlist[[k]] = as.matrix(xlist_input[[k]])
+    } else {
+      xlist[[k]] = xlist_input[[k]]
+    }
+  }
+  return (xlist)
+}
+
 UpdateW <- function(xlist, i, K, sumabsthis, ws, type="standard", ws.final){
   tots <- 0
   for(j in (1:K)[-i]){
@@ -43,9 +55,9 @@ UpdateW <- function(xlist, i, K, sumabsthis, ws, type="standard", ws.final){
     tots <- as.numeric(tots)
     tots <- tots/mean(abs(tots)) 
     w <- FLSA(tots,lambda1=sumabsthis,lambda2=sumabsthis)[1,1,]
-#    flsa.out <- diag.fused.lasso.new(tots,lam1=sumabsthis)
-#    lam2ind <- which.min(abs(flsa.out$lam2-sumabsthis))
-#    w <- flsa.out$coef[,lam2ind]
+    flsa.out <- diag.fused.lasso.new(tots,lam1=sumabsthis)
+    lam2ind <- which.min(abs(flsa.out$lam2-sumabsthis))
+    w <- flsa.out$coef[,lam2ind]
     w <- w/l2n(w)
     w[is.na(w)] <- 0
   }
@@ -83,14 +95,22 @@ sup_MultiCCA.permute <- function(xlist_raw, y, outcome, penalties=NULL, ws=NULL,
   for(k in 1:K){
     if(ncol(xlist_raw[[k]])<2) stop("Need at least 2 features in each data set!")
     if(standardize) xlist_raw[[k]] <- scale(xlist_raw[[k]], T, T)
+    if (is.matrix(xlist_raw[[k]])) {
+      xlist_raw[[k]] = as.data.frame(xlist_raw[[k]])
+    }
   }
   if(length(type)==1) type <- rep(type, K) # If type is just a single element, expand to make a vector of length(xlist_raw)
           # Or type can have standard/ordered for each elt of xlist_raw
   if(length(type)!=K) stop("Type must be a vector of length 1, or length(xlist_raw)")
   if(sum(type!="standard" & type!="ordered")>0) stop("Each element of type must be standard or ordered.")
 
+  # if (!is.data.frame(xlist_raw)) {
+  #   stop("xlist before selection should be dataframe.")
+  # }
+
   filter_out = MultiCCA.Phenotype.ZeroSome(xlist_raw, y, qt=.8, cens=NULL, outcome=outcome, type)
-  xlist = filter_out$xlist_sel
+  xlist_input = filter_out$xlist_sel
+  xlist = df_list2matrix(xlist_input, K)
   feature_dropped = filter_out$feature_dropped
   # print("step I")
   # print(dim(xlist[[1]]))
@@ -145,17 +165,24 @@ sup_MultiCCA.permute <- function(xlist_raw, y, outcome, penalties=NULL, ws=NULL,
     zs <- c(zs, (cors[i]-mean(permcors[,i]))/(sd(permcors[,i])+.05))
   }
   if(trace) cat(fill=TRUE)
-  out <- list(pvals=pvals, zstat=zs, bestpenalties=penalties[,which.max(zs)], cors=cors, corperms=permcors, numnonzeros=numnonzeros, ws.init=ws.init, call=call, penalties=penalties, type=type, nperms=nperms, xlist=xlist, feature_dropped=feature_dropped)
+  out <- list(pvals=pvals, zstat=zs, bestpenalties=penalties[,which.max(zs)], cors=cors, corperms=permcors, numnonzeros=numnonzeros, ws.init=ws.init, call=call, penalties=penalties, type=type, nperms=nperms, xlist=xlist_input, feature_dropped=feature_dropped)
   class(out) <- "sup_MultiCCA.permute"
   return(out)
 }
 
-sup_MultiCCA <- function(xlist_raw, xlist, feature_dropped, penalty=NULL, ws=NULL, niter=25, type="standard", ncomponents=1, trace=TRUE, standardize=TRUE){
-  for(i in 1:length(xlist)){
+sup_MultiCCA <- function(xlist_raw, xlist_input, feature_dropped, penalty=NULL, ws=NULL, niter=25, type="standard", ncomponents=1, trace=TRUE, standardize=TRUE){
+  K <- length(xlist_input)
+  # Newly added
+  if (!is.data.frame(xlist_input[[1]]) | !is.data.frame(xlist_raw[[1]])) {
+    stop("xlist before and after selection should be dataframe.")
+  }
+  xlist = df_list2matrix(xlist_input, K)
+
+  for(i in 1:K){
     if(ncol(xlist[[i]])<2) stop("Need at least 2 features in each data set.")
   }
   call <- match.call()
-  K <- length(xlist)
+
   if(length(type)==1) type <- rep(type, K) # If type is just a single element, expand to make a vector of length(xlist)
           # Or type can have standard/ordered for each elt of xlist
   if(length(type)!=K) stop("Type must be a vector of length 1, or length(xlist)")
@@ -214,12 +241,16 @@ sup_MultiCCA <- function(xlist_raw, xlist, feature_dropped, penalty=NULL, ws=NUL
     cors <- c(cors, GetCors(xlist, ws,K))
   }
   ws.final_raw = list()
+  cv = list()
   for (i in 1:length(xlist)) {
-    rownames(ws.final[[i]]) = colnames(xlist[[i]])
+    ws.final[[i]] = as.data.frame(ws.final[[i]])
+    rownames(ws.final[[i]]) = colnames(xlist_input[[i]])
     weight_dropped = as.data.frame(matrix(0, nrow=length(feature_dropped[[i]]), ncol=ncomponents))
     rownames(weight_dropped) = feature_dropped[[i]]
-    ws.final_raw[[i]] = rbind(ws.final[[i]], weight_dropped)
-    ws.final_raw = ws.final_raw[colnames(xlist_raw[[i]]), ]
+    tmp_ws.final_raw = rbind(ws.final[[i]], weight_dropped)
+    tmp_ws.final_raw = tmp_ws.final_raw[colnames(xlist_raw[[i]]), ]
+    ws.final_raw[[i]] = as.matrix(tmp_ws.final_raw)
+    # ws.final_raw[[i]] = tmp_ws.final_raw
   }
   out <- list(ws=ws.final_raw, ws.init=ws.init, K=K, call=call, type=type, penalty=penalty, cors=cors)
   class(out) <- "sup_MultiCCA"
@@ -242,7 +273,6 @@ MultiCCA.Phenotype.ZeroSome <- function(xlist,y,qt=.8,cens=NULL,outcome=c("quant
       score.x <- multiclass.func(t(tmp_x)[,!is.na(y)],y[!is.na(y)])$tt
     }
     if(type[k] == "standard"){
-      # print(sum(is.na(score.x)))
       keep.x <- abs(score.x) >= quantile(abs(score.x),qt)
     } else if (type[k] == "ordered") {
       lam <- ChooseLambda1Lambda2(as.numeric(score.x))
@@ -252,10 +282,10 @@ MultiCCA.Phenotype.ZeroSome <- function(xlist,y,qt=.8,cens=NULL,outcome=c("quant
       if(mean(keep.x)==1 | mean(keep.x)==0) keep.x <- (abs(score.x) >= quantile(abs(score.x), qt))
     }
     xnew <- tmp_x
-    xnew[,!keep.x] <- 0
-    feature_dropped[[k]] = colnames(tmp_x)[!keep.x]
-    xnew_effec = xnew[, colSums(xnew != 0) > 0]
-    xlist_sel[[k]] = xnew_effec
+    xlist_sel[[k]] = xnew[, keep.x]
+    xlist_drop = xnew[,!keep.x]
+    feature_dropped[[k]] = colnames(xlist_drop)
+    # print(feature_dropped[[k]])
     score_list[[k]] = score.x
   }
   # return(list(xlist_sel=xlist_sel, score_list=score_list))

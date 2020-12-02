@@ -7,7 +7,8 @@ library(reshape2)
 library(corrplot)
 source("sup_MultiCCA.R")
 
-GetCors <- function(xlist, ws, K){
+get_cor <- function(xlist_input, ws, K){
+	xlist = df_list2matrix(xlist_input, K)
 	cors <- 0
 	for(i in 2:K){
 		for(j in 1:(i-1)){
@@ -151,7 +152,8 @@ rep = 1 * size_factor * feature_factor
 noise_sd = 5
 ncol = 8 * size_factor * feature_factor
 matrix_seed_vec = c(1)
-cca_seed_vec = c(2:20)
+# cca_seed_vec = c(2:20)
+cca_seed_vec = c(1)
 noise_mode = "noise-reinf"
 # noise_mode = "noise-keep"
 cca_fashion = "sup-mcca"
@@ -174,7 +176,8 @@ for (matrix_seed in matrix_seed_vec) {
 			z_matrix = matrix(rnorm(nrow * ncol, mean = 10, sd = 5), nrow, ncol_rel)
 			x1 = matrix(rnorm(nrow * ncol, mean = 3, sd = 2), nrow, ncol)
 			x2 = matrix(rnorm(nrow * ncol, mean = 3, sd = 2), nrow, ncol)
-			y = z_matrix %*% matrix(runif(ncol_rel, min = 0, max = 1), ncol_rel, 1)
+			y_coef = matrix(runif(ncol_rel, min = 0, max = 1), ncol_rel, 1)
+			y = z_matrix %*% y_coef
 
 			for (i in 1:ncol_rel) {
 				z_i = z_matrix[, i]
@@ -190,10 +193,12 @@ for (matrix_seed in matrix_seed_vec) {
 					x2[, j] = z_i + rnorm(nrow * 1, mean = 0, sd = noise_assign)
 				}
 			}
+			x1_df = as.data.frame(x1)
+			x2_df = as.data.frame(x2)
 
 			set.seed(cca_seed)
 
-			input_list = list(x1, x2)
+			input_list = list(x1_df, x2_df)
 			# x1_x2 = cbind(x1, x2)
 			# assay_cor_plot(x1, rep, output_dir, "cor-x1", existed_image_prefix)
 			# assay_cor_plot(x2, rep, output_dir, "cor-x2", existed_image_prefix)
@@ -219,7 +224,7 @@ for (matrix_seed in matrix_seed_vec) {
 		existed_perm_dir_filename = file.path(output_dir, existed_perm_filename)
 		if (!file.exists(existed_perm_dir_filename)) {
 			cors = matrix(NA, nrow = 1, ncol = ncomp)
-			out = MultiCCA(input_list_select, penalty = fullMCCA$bestpenalties, ncomponents = ncomp)
+			out = sup_MultiCCA(input_list, input_list_select, fullMCCA$feature_dropped, penalty = fullMCCA$bestpenalties, ncomponents = ncomp)
 			fullcca_time <- Sys.time()
 
 			w1 = out$ws[[1]]
@@ -247,8 +252,8 @@ for (matrix_seed in matrix_seed_vec) {
 			legend(x = "right", legend = rownames(contrib_w2_forbar), fill = mycols)
 			dev.off()
 	
-			cv1_raw = scale(input_list_select[[1]], T, T) %*% w1
-			cv2_raw = scale(input_list_select[[2]], T, T) %*% w2
+			cv1_raw = scale(x1, T, T) %*% w1
+			cv2_raw = scale(x2, T, T) %*% w2
 			cv1 = rehead_mat(cv1_raw, "cv1")
 			cv2 = rehead_mat(cv2_raw, "cv2")
 			cv1_cv2 = cbind(cv1, cv2)
@@ -259,16 +264,16 @@ for (matrix_seed in matrix_seed_vec) {
 			cv_assay_cor_plot(x1, cv1, rep, output_dir, "cor-cv1-x1", existed_image_prefix)
 			cv_assay_cor_plot(x2, cv2, rep, output_dir, "cor-cv2-x2", existed_image_prefix)
 
-			cors[1, ] <- GetCors(input_list_select, out$ws, K)
+			cors[1, ] <- get_cor(input_list, out$ws, K)
 
 			set.seed(perm_seed)
 			for (perm_i in 1:nperm_test) {
-			    xlistperm <- input_list_select
+			    xlistperm <- input_list
 			    for(k in 1:K){
 			      xlistperm[[k]] <- xlistperm[[k]][sample(1:nrow(xlistperm[[k]])),]
 			    }
-				out_perm = MultiCCA(xlistperm, penalty = fullMCCA$bestpenalties, ncomponents = ncomp)
-				permcors[perm_i, ] <- GetCors(xlistperm, out_perm$ws, K)
+				out_perm = sup_MultiCCA(input_list, xlistperm, fullMCCA$feature_dropped, penalty = fullMCCA$bestpenalties, ncomponents = ncomp)
+				permcors[perm_i, ] <- get_cor(xlistperm, out_perm$ws, K)
 			}
 
 			pvals = NULL
