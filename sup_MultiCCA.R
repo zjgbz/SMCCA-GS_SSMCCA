@@ -150,11 +150,88 @@ sup_MultiCCA.permute <- function(xlist_raw, y, outcome, penalties=NULL, ws=NULL,
   return(out)
 }
 
+sup_MultiCCA <- function(xlist_raw, xlist, feature_dropped, penalty=NULL, ws=NULL, niter=25, type="standard", ncomponents=1, trace=TRUE, standardize=TRUE){
+  for(i in 1:length(xlist)){
+    if(ncol(xlist[[i]])<2) stop("Need at least 2 features in each data set.")
+  }
+  call <- match.call()
+  K <- length(xlist)
+  if(length(type)==1) type <- rep(type, K) # If type is just a single element, expand to make a vector of length(xlist)
+          # Or type can have standard/ordered for each elt of xlist
+  if(length(type)!=K) stop("Type must be a vector of length 1, or length(xlist)")
+  if(sum(type!="standard" & type!="ordered")>0) stop("Each element of type must be standard or ordered.")
+  for(k in 1:K){
+    if(standardize) xlist[[k]] <- scale(xlist[[k]], T, T)
+  }
+  if(!is.null(ws)){
+    makenull <- FALSE
+    for(i in 1:K){
+      if(ncol(ws[[i]])<ncomponents) makenull <- TRUE
+    }
+    if(makenull) ws <- NULL
+  }
+  if(is.null(ws)){
+    ws <- list()
+    for(i in 1:K) ws[[i]] <- matrix(svd(xlist[[i]])$v[,1:ncomponents], ncol=ncomponents)
+  }
+  if(is.null(penalty)){
+    penalty <- rep(NA, K)
+    penalty[type=="standard"] <- 4 # this is the default value of sumabs
+    for(k in 1:K){
+      if(type[k]=="ordered"){
+        v <- svd(xlist[[k]])$v[,1]
+        penalty[k] <- ChooseLambda1Lambda2(v)
+      }
+    }
+  }
+  ws.init <- ws
+  if(length(penalty)==1) penalty <- rep(penalty, K)
+  if(sum(penalty<1 & type=="standard")) stop("Cannot constrain sum of absolute values of weights to be less than 1.")
+  for(i in 1:length(xlist)){
+    if(type[i]=="standard" && penalty[i]>sqrt(ncol(xlist[[i]]))) stop("L1 bound of weights should be no more than sqrt of the number of columns of the corresponding data set.", fill=TRUE)
+  }
+  ws.final <- list()
+  for(i in 1:length(ws)) ws.final[[i]] <- matrix(0, nrow=ncol(xlist[[i]]), ncol=ncomponents)
+  cors <- NULL
+  for(comp in 1:ncomponents){
+    ws <- list()
+    for(i in 1:length(ws.init)) ws[[i]] <- ws.init[[i]][,comp]
+    curiter <- 1
+    crit.old <- -10
+    crit <- -20
+    storecrits <- NULL
+    while(curiter<=niter && abs(crit.old-crit)/abs(crit.old)>.001 && crit.old!=0){
+      crit.old <- crit
+      crit <- GetCrit(xlist, ws, K)
+      storecrits <- c(storecrits,crit)
+      if(trace) cat(curiter, fill=FALSE)
+      curiter <- curiter+1
+      for(i in 1:K){
+        ws[[i]] <- UpdateW(xlist, i, K, penalty[i], ws, type[i], ws.final)
+      }
+    }
+    for(i in 1:length(ws)) ws.final[[i]][,comp] <- ws[[i]]
+    cors <- c(cors, GetCors(xlist, ws,K))
+  }
+  ws.final_raw = list()
+  for (i in 1:length(xlist)) {
+    rownames(ws.final[[i]]) = colnames(xlist[[i]])
+    weight_dropped = as.data.frame(matrix(0, nrow=length(feature_dropped[[i]]), ncol=ncomponents))
+    rownames(weight_dropped) = feature_dropped[[i]]
+    ws.final_raw[[i]] = rbind(ws.final[[i]], weight_dropped)
+    ws.final_raw = ws.final_raw[colnames(xlist_raw[[i]]), ]
+  }
+  out <- list(ws=ws.final_raw, ws.init=ws.init, K=K, call=call, type=type, penalty=penalty, cors=cors)
+  class(out) <- "sup_MultiCCA"
+  return(out)
+}
+
 MultiCCA.Phenotype.ZeroSome <- function(xlist,y,qt=.8,cens=NULL,outcome=c("quantitative", "survival", "multiclass"), type){
   outcome <- match.arg(outcome)
   K = length(xlist)
   xlist_sel = list()
   score_list = list()
+  feature_dropped = list()
   for(k in 1:K) {
     tmp_x = xlist[[k]]
     if (outcome=="quantitative") {
@@ -176,7 +253,7 @@ MultiCCA.Phenotype.ZeroSome <- function(xlist,y,qt=.8,cens=NULL,outcome=c("quant
     }
     xnew <- tmp_x
     xnew[,!keep.x] <- 0
-    feature_dropped = colnames(tmp_x)[!keep.x]
+    feature_dropped[[k]] = colnames(tmp_x)[!keep.x]
     xnew_effec = xnew[, colSums(xnew != 0) > 0]
     xlist_sel[[k]] = xnew_effec
     score_list[[k]] = score.x
