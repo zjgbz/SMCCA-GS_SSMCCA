@@ -143,7 +143,7 @@ rehead_mat <- function(mat, head_prefix) {
 # feature_factor = as.numeric(args[2])
 
 # cca_seed = 1
-feature_factor = 1
+feature_factor = 10
 
 size_factor = 100
 nrow = 4 * size_factor
@@ -152,7 +152,7 @@ rep = 1 * size_factor * feature_factor
 noise_sd = 5
 ncol = 8 * size_factor * feature_factor
 matrix_seed_vec = c(1)
-cca_seed_vec = c(1:20)
+cca_seed_vec = c(1)
 # cca_seed_vec = c(1)
 noise_mode = "noise-reinf"
 # noise_mode = "noise-keep"
