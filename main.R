@@ -251,13 +251,11 @@ MultiCCA <- function(xlist, update_type, penalty=NULL, ws=NULL, niter=25, ncompo
 		for(i in 1:K) ws[[i]] <- matrix(svd(xlist[[i]])$v[,1:ncomponents], ncol=ncomponents)
 	}
 	if(is.null(penalty)){
-		# penalty <- rep(NA, K)
-		# penalty[type=="standard"] <- 4 # this is the default value of sumabs
 		penalty <- rep(4, K) # this is the default value of sumabs
 	}
 	ws.init <- ws
 	if(length(penalty)==1) penalty <- rep(penalty, K)
-	# if(sum(penalty<1 & type=="standard")) stop("Cannot constrain sum of absolute values of weights to be less than 1.")
+	
 	for(i in 1:length(xlist)){
 		if(penalty[i]>sqrt(ncol(xlist[[i]]))) stop("L1 bound of weights should be no more than sqrt of the number of columns of the corresponding data set.", fill=TRUE)
 	}
@@ -339,7 +337,6 @@ MultiCCA_GS <- function(moData, update_type="nores", opt_num=4, ncomponents=1, n
 
 	penalty_df = do.call(cbind, penalty_list)
 
-	# print(pvals)
 	out = list(canon_var=cv_list, weight=weight_list, penalty=penalty_df)
 	class(out) = "MultiCCA_GS"
 	return (out)
@@ -358,9 +355,9 @@ df_list2matrix <- function(xlist_input, K) {
 	return (xlist)
 }
 
-sup_MultiCCA_GS <- function(assay_name_list, moData_raw, y, outcome, opt_num=4, update_type="nores", qt_list=NULL, ncomponents=1, nperms=10, niter_perm=25, niter=3, cca_seed=42) {
+sup_MultiCCA_GS <- function(moData, y, outcome, opt_num=4, update_type="nores", assay_name_list=NULL, qt_list=NULL, ncomponents=1, nperms=10, niter_perm=25, niter=3, cca_seed=42) {
 	# moData should be the list of dataframe rather than matrices
-	mat_num = length(moData_raw)
+	mat_num = length(moData)
 
 	if (is.null(qt_list)) {
 		qt_list = rep(0.8, mat_num)
@@ -370,13 +367,20 @@ sup_MultiCCA_GS <- function(assay_name_list, moData_raw, y, outcome, opt_num=4, 
 		}
 	}
 
+	if (is.null(assay_name_list)) {
+		assay_name_list=c(1:mat_num)
+	} else {
+		if (length(assay_name_list) != mat_num) {
+			stop("assay_name_list should include all threshold for each assay.")
+		}
+	}
+
 	if (opt_num == "full" || opt_num > ncomponents) {
 		opt_num = ncomponents
 	}
 	
-	# print("error happens before selection.")
-	filter_out = MultiCCA.Phenotype.ZeroSome(assay_name_list, moData_raw, y, qt_list, cens=NULL, outcome=outcome)
-	# print("error happens after selection completed.")
+	filter_out = MultiCCA.Phenotype.ZeroSome(assay_name_list, moData, y, qt_list, cens=NULL, outcome=outcome)
+	
 	feature_dropped = filter_out$feature_dropped
 	feature_kept = filter_out$feature_kept
 	moData_scale_df = filter_out$xlist_sel
@@ -388,7 +392,7 @@ sup_MultiCCA_GS <- function(assay_name_list, moData_raw, y, outcome, opt_num=4, 
 	set.seed(cca_seed)
 	for (mat_idx in 1:mat_num) {
 		mat_i = moData_scale[[mat_idx]]
-		mat_raw_i = moData_raw[[mat_idx]]
+		mat_raw_i = moData[[mat_idx]]
 
 		tmp_w_sel_mat = matrix(0, dim(mat_i)[2], ncomponents)
 		tmp_w_sel = as.data.frame(tmp_w_sel_mat)
