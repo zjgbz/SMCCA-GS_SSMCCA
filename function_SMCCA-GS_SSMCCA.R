@@ -123,6 +123,10 @@ MultiCCA.Phenotype.ZeroSome <- function(assay_name_list, xlist, y_raw, qt_list, 
 	score_list = list()
 	feature_dropped = list()
 	feature_kept = list()
+	if (is.data.frame(y_raw)) {
+		y_raw = y_raw[, 1]
+	}
+
 	if (is.list(y_raw) == FALSE) {
 		ylist = list()
 		for (k in 1:K) {
@@ -148,18 +152,11 @@ MultiCCA.Phenotype.ZeroSome <- function(assay_name_list, xlist, y_raw, qt_list, 
 
 		keep.x <- abs(score.x) >= quantile(abs(score.x), qt)
 
-		# print("error happens after selection.")
 		xnew <- tmp_x
-		# print("error happens after 1.")
 		xlist_sel[[k]] = xnew[, keep.x]
-		# print("error happens after 2.")
 		xlist_drop = xnew[,!keep.x]
-		# print("error happens after 3.")
 		feature_dropped[[k]] = colnames(xlist_drop)
-		# print("error happens after 4.")
 		feature_kept[[assay_name_list[k]]] = keep.x
-		# print(feature_dropped[[k]])
-		# print("error happens after 5.")
 		score_list[[k]] = score.x
 	}
 	# return(list(xlist_sel=xlist_sel, score_list=score_list))
@@ -315,7 +312,8 @@ MultiCCA_GS <- function(moData, update_type="nores", opt_num=4, ncomponents=1, n
 		}
 		fullMCCA2 = MultiCCA(moData_scale, update_type=update_type, penalty=fullMCCA$bestpenalties, niter=niter, ncomponents=1)
 
-		penalty_list[[comp_i]] = data.frame(fullMCCA$bestpenalties)
+		penalty_list[[comp_i]] = as.data.frame(fullMCCA$bestpenalties)
+		# View(fullMCCA$bestpenalties)
 		colnames(penalty_list[[comp_i]]) = comp_i
 
 		moData_scale_old = moData_scale
@@ -335,7 +333,7 @@ MultiCCA_GS <- function(moData, update_type="nores", opt_num=4, ncomponents=1, n
 		print(sprintf("%d/%d component completed.", comp_i, ncomponents))
 	}
 
-	penalty_df = do.call(cbind, penalty_list)
+	penalty_df = t(do.call(cbind, penalty_list))
 
 	out = list(canon_var=cv_list, weight=weight_list, penalty=penalty_df)
 	class(out) = "MultiCCA_GS"
@@ -442,7 +440,7 @@ sup_MultiCCA_GS <- function(moData, y, outcome, opt_num=4, update_type="nores", 
 		print(sprintf("%d/%d component completed.", comp_i, ncomponents))
 	}
 
-	penalty_df = do.call(cbind, penalty_list)
+	penalty_df = t(do.call(cbind, penalty_list))
 
 	weight_list_df = weight_list
 	weight_sel_list_df = weight_sel_list
@@ -456,7 +454,7 @@ sup_MultiCCA_GS <- function(moData, y, outcome, opt_num=4, update_type="nores", 
 	}
 
 	# print(pvals)
-	out = list(canon_var=cv_list, weight=weight_list, weight_select=weight_sel_list, feature_dropped=feature_dropped, feature_kept=feature_kept, penalty=penalty_df)
+	out = list(canon_var=cv_list, weight=weight_list, weight_select=weight_sel_list, feature_dropped=feature_dropped, penalty=penalty_df)
 	class(out) = "sup_MultiCCA_GS"
 	return (out)
 }
