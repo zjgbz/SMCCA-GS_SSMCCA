@@ -47,6 +47,13 @@ MultiCCA_GS(moData, update_type="nores", opt_num=4, ncomponents=1, nperms=10,
 | niter       | (optional) numerical value. Similar to ```niter_perm```, but ```niter``` defines the limit of the number of iteration steps in the weight updating step of the CV calcuation step. The default value is ```niter_perm=25```.                                                                                                                    |
 | cca_seed    | (optional) numerical value for reproducing the results. The default value is ```cca_seed=42```.                                                                                                                                                                                                                                                 |
 
+#### Values
+
+| Values    | Descriptions                                                                                                                                                                                                                                |
+|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| canon_var | a list of dataframes contains canonical vectors (CVs) for each assay. Each CV dataframe is in the same dimension: the number of rows is the same as the number of rows of each assay, and the number of columns is the number of CVs.       |
+| weight    | a list of dataframes contains weights for each assay. Each weight dataframe has the same number of columns: the number of CVs; the number of rows of each weight dataframe is the same as the number of columns of the corresponding assay. |
+| penalty   | an R dataframe lists penalty of each assay of each CV. The number of columns is the same as the number of assays, and the number of rows is the same as the number of CVs.                                                                  |
 
 ### ```sup_MultiCCA_GS```
 
