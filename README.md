@@ -60,8 +60,8 @@ MultiCCA_GS(moData, update_type="nores", opt_num=4, ncomponents=1, nperms=10,
 #### Usage
 
 ````
-sup_MultiCCA_GS <- function(moData, y, outcome, opt_num=4, update_type="nores", assay_name_list=NULL,
-                            qt_list=NULL, ncomponents=1, nperms=10, niter_perm=25, niter=3, cca_seed=42)
+sup_MultiCCA_GS(moData, y, outcome, opt_num=4, update_type="nores", assay_name_list=NULL,
+                qt_list=NULL, ncomponents=1, nperms=10, niter_perm=25, niter=3, cca_seed=42)
 ````
 
 #### Arguments
