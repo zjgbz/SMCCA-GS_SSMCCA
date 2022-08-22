@@ -6,7 +6,16 @@ If this source code or accompanying files are helpful for your research, please 
 
 ## Files in this repository
 
-All functions are in ```function_SMCCA-GS_SSMCCA.R```. ```SMCCA-GS_SSMCCA_Example.nb.html``` shows a practice of two main functions ```MultiCCA_GS``` for SMCCA-GS and ```sup_MultiCCA_GS``` for SSMCCA, and can be viewed [here](https://zjgbz.github.io/SMCCA-GS_SSMCCA/SMCCA-GS_SSMCCA_Example.nb.html). ```x1.tsv, x2.tsv, x3.tsv, y.tsv``` are data file randomly simulated data files used in the practice of ```MultiCCA_GS``` and ```sup_MultiCCA_GS```. ```.gitignore``` is the file defining which files should not be staged.
+All functions are in ```function_SMCCA-GS_SSMCCA.R```.
+
+
+```SMCCA-GS_SSMCCA_Example.nb.html``` shows a practice of two main functions ```MultiCCA_GS``` for SMCCA-GS and ```sup_MultiCCA_GS``` for SSMCCA, and can be viewed [here](https://zjgbz.github.io/SMCCA-GS_SSMCCA/SMCCA-GS_SSMCCA_Example.nb.html).
+
+
+```x1.tsv, x2.tsv, x3.tsv, y.tsv``` are data file randomly simulated data files used in the practice of ```MultiCCA_GS``` and ```sup_MultiCCA_GS```.
+
+
+```.gitignore``` is the file defining which files should not be staged.
 
 ## Setup
 
