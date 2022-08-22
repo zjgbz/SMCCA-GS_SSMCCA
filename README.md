@@ -19,10 +19,13 @@ SMCCA-GS is used for finding the maximal sum correlation across all input assays
 #### Usage
 
 ````
-```
-MultiCCA_GS(moData, update_type="nores", opt_num=4, ncomponents=1, nperms=10, niter_perm=3, niter=25, cca_seed=42)
-```
+MultiCCA_GS(moData, update_type="nores", opt_num=4,
+            ncomponents=1, nperms=10, niter_perm=3,
+            niter=25, cca_seed=42)
 ````
+
+#### Arguments
+
 
 ### ```sup_MultiCCA_GS```
 
