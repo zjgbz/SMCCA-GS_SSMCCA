@@ -2,7 +2,7 @@
 
 This package provides an implementation of our sparse multiple canonical correlation analysis (SMCCA-GS) and supervised sparse multiple canonical correlation analysis (SSMCCA) methods and examples on running these two functions.
 
-A practice of these two function is [here](https://zjgbz.github.io/SMCCA-GS_SSMCCA/SMCCA-GS_SSMCCA_Example.nb.html).
+A practice of these two main functions is [here](https://zjgbz.github.io/SMCCA-GS_SSMCCA/SMCCA-GS_SSMCCA_Example.nb.html).
 
 If this source code or accompanying files are helpful for your research, please cite the following publication:
 
@@ -15,15 +15,14 @@ Our functions have been tested on R 4.1.0 and R 4.1.3. All functions are self-in
 SMCCA-GS is used for finding the maximal sum correlation across all input assays without involving any outcomes, and is implemented in the function ```MultiCCA_GS```. SSMCCA is used for finding the maximal sum correlation across all input assays with considering outcomes, and is implemented in the function ```sup_MultiCCA_GS```.
 
 ### ```MultiCCA_GS```
-SMCCA-GS is used for finding the maximal sum correlation across all input assays without involving any outcomes, and is implemented in the function ```MultiCCA_GS```.
 
+#### Usage
 
-## Abbreviations:
-PMA
-SMCCA
-SSCCA
-GS
-SMCCA-GS
-SSMCCA
+````
+```
+MultiCCA_GS(moData, update_type="nores", opt_num=4, ncomponents=1, nperms=10, niter_perm=3, niter=25, cca_seed=42)
+```
+````
 
-Multi-passes version of supervised spare CCA based on the modified PMA package.
+### ```sup_MultiCCA_GS```
+
