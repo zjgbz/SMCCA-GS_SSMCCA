@@ -1,20 +1,5 @@
 # Functions below are developed by Min-Zhi Jiang
 
-# Function df_list2matrix is used for convert the
-# input list of objects to dataframes
-
-df_list2matrix <- function(xlist_input, K) {
-	xlist = list()
-	for (k in 1:K) {
-		if (is.data.frame(xlist_input[[k]])) {
-			xlist[[k]] = as.matrix(xlist_input[[k]])
-		} else {
-			xlist[[k]] = xlist_input[[k]]
-		}
-	}
-	return (xlist)
-}
-
 # Unsupervised Sparse Multiple Canonical Correlation Analysis
 # with Gram–Schmidt Process
 
@@ -180,6 +165,21 @@ sup_MultiCCA_GS <- function(moData, y, outcome, opt_num=4, update_type="nores", 
 	out = list(canon_var=cv_list, weight=weight_list, weight_select=weight_sel_list, feature_dropped=feature_dropped, penalty=penalty_df)
 	class(out) = "sup_MultiCCA_GS"
 	return (out)
+}
+
+# Function df_list2matrix is used for convert the
+# input list of objects to dataframes
+
+df_list2matrix <- function(xlist_input, K) {
+	xlist = list()
+	for (k in 1:K) {
+		if (is.data.frame(xlist_input[[k]])) {
+			xlist[[k]] = as.matrix(xlist_input[[k]])
+		} else {
+			xlist[[k]] = xlist_input[[k]]
+		}
+	}
+	return (xlist)
 }
 
 # Functions below modifed from Witten and Tibshirani (2009) PMA R package
