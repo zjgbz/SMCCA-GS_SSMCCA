@@ -63,7 +63,7 @@ MultiCCA_GS <- function(moData, update_type="nores", opt_num=4, ncomponents=1, n
 # Supervised Sparse Multiple Canonical Correlation Analysis
 # based on sup_MultiCCA_GS
 
-sup_MultiCCA_GS <- function(moData, y, outcome, opt_num=4, update_type="nores", qt_list=NULL, ncomponents=1, nperms=10, niter=25, cca_seed=42) {
+sup_MultiCCA_GS <- function(moData, y, outcome, update_type="nores", opt_num=4, qt_list=NULL, ncomponents=1, nperms=10, niter=25, cca_seed=42) {
 	# moData should be the list of dataframe rather than R matrix
 	mat_num = length(moData)
 
