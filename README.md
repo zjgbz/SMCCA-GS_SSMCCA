@@ -52,9 +52,9 @@ MultiCCA_GS(moData, update_type="nores", opt_num=4, ncomponents=1, nperms=10,
 
 | Object(s)    | Description                                                                                                                                                                                                                                |
 |-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| canon_var | a list of R matrices that contains canonical vectors (CVs) for each assay. The dimension of a CV matrix is ```$n\times p$```, where ```$n$``` is the sample size of the corresponding assay, and ```$p$``` is the number of CVs (specified by ```ncomponents```).       |
-| weight    | a list of R matrices that contains weights for each assay. The dimension of a weight matrix is ```$p\times M$```, where ```$p``` is the number of CVs (specified by ```ncomponents```) and ```$M``` is the number of features of the corresponding assay.  |
-| penalty   | an R matrix that records penalty of each assay of each CV. The dimsion of a penalty matrix is ```$p\times K$```, where ```$p``` is the number of CVs (specified by ```ncomponents```) and ```$K``` is the number of assays.                                                                  |
+| canon_var | a list of R matrices that contains canonical vectors (CVs) for each assay. The dimension of a CV matrix is $n\times p$, where $n$ is the sample size of the corresponding assay, and $p$ is the number of CVs (specified by ```ncomponents```).       |
+| weight    | a list of R matrices that contains weights for each assay. The dimension of a weight matrix is $p\times M$, where $p$ is the number of CVs (specified by ```ncomponents```) and $M$ is the number of features of the corresponding assay.  |
+| penalty   | an R matrix that records penalty of each assay of each CV. The dimsion of a penalty matrix is $p\times K$, where $p$ is the number of CVs (specified by ```ncomponents```) and $K$ is the number of assays.                                                                  |
 
 ### ```sup_MultiCCA_GS```
 
