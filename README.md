@@ -31,8 +31,7 @@ SMCCA-GS is used for finding canonical vectors (CVs) with maximal sum correlatio
 #### Usage
 
 ````
-MultiCCA_GS(moData, update_type="nores", opt_num=4, ncomponents=1, nperms=10, 
-            niter_perm=3, niter=25, cca_seed=42)
+MultiCCA_GS(moData, update_type="nores", opt_num=4, ncomponents=1, nperms=10, niter=25, cca_seed=42)
 ````
 
 #### Arguments
@@ -61,7 +60,7 @@ MultiCCA_GS(moData, update_type="nores", opt_num=4, ncomponents=1, nperms=10,
 
 ````
 sup_MultiCCA_GS(moData, y, outcome, update_type="nores", opt_num=4, assay_name_list=NULL,
-                qt_list=NULL, ncomponents=1, nperms=10, niter_perm=25, niter=3, cca_seed=42)
+                qt_list=NULL, ncomponents=1, nperms=10, niter=25, cca_seed=42)
 ````
 
 #### Arguments
