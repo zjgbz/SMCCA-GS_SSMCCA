@@ -3,7 +3,8 @@
 # Unsupervised Sparse Multiple Canonical Correlation Analysis
 # with Gram–Schmidt Process
 
-MultiCCA_GS <- function(moData, update_type="nores", opt_num=4, ncomponents=1, nperms=10, niter_perm=3, niter=25, cca_seed=42) {
+MultiCCA_GS <- function(moData, update_type="nores", opt_num=4, ncomponents=1, nperms=10, niter=25, cca_seed=42) {
+
 	if (opt_num == "full" || opt_num > ncomponents) {
 		opt_num = ncomponents
 	}
@@ -22,6 +23,7 @@ MultiCCA_GS <- function(moData, update_type="nores", opt_num=4, ncomponents=1, n
 	}
 
 	penalty_list = list()
+	niter_perm = 3
 	
 	for (comp_i in 1:ncomponents) {
 		print(comp_i)
@@ -61,7 +63,7 @@ MultiCCA_GS <- function(moData, update_type="nores", opt_num=4, ncomponents=1, n
 # Supervised Sparse Multiple Canonical Correlation Analysis
 # based on sup_MultiCCA_GS
 
-sup_MultiCCA_GS <- function(moData, y, outcome, opt_num=4, update_type="nores", qt_list=NULL, ncomponents=1, nperms=10, niter_perm=25, niter=3, cca_seed=42) {
+sup_MultiCCA_GS <- function(moData, y, outcome, opt_num=4, update_type="nores", qt_list=NULL, ncomponents=1, nperms=10, niter=25, cca_seed=42) {
 	# moData should be the list of dataframe rather than R matrix
 	mat_num = length(moData)
 
@@ -105,6 +107,7 @@ sup_MultiCCA_GS <- function(moData, y, outcome, opt_num=4, update_type="nores", 
 		cv_list[[mat_idx]] = matrix(0, dim(mat_i)[1], ncomponents)
 	}
 	penalty_list = list()
+	niter_perm=3
 	
 	for (comp_i in 1:ncomponents) {
 		print(comp_i)
