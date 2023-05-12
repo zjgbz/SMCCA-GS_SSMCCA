@@ -1499,6 +1499,8 @@ window.initializeCodeFolding = function(show) {
   // select all R code blocks
   var rCodeBlocks = $('pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan, pre.julia, pre.foldable');
   rCodeBlocks.each(function() {
+    // skip if the block has fold-none class
+    if ($(this).hasClass('fold-none')) return;
 
     // create a collapsable div to wrap the code in
     var div = $('<div class="collapse r-code-collapse"></div>');
@@ -1514,7 +1516,9 @@ window.initializeCodeFolding = function(show) {
     showCodeButton.append(showCodeText);
     showCodeButton
         .attr('data-toggle', 'collapse')
+        .attr('data-bs-toggle', 'collapse') // BS5
         .attr('data-target', '#' + id)
+        .attr('data-bs-target', '#' + id)   // BS5
         .attr('aria-expanded', showThis)
         .attr('aria-controls', id);
 
@@ -1604,6 +1608,7 @@ if (window.hljs) {
 
 
 
+
 <style type="text/css">
 #rmd-source-code {
 display: none;
@@ -1634,6 +1639,9 @@ outline: none;
 }
 summary {
 display: list-item;
+}
+details > summary > p:only-child {
+display: inline;
 }
 pre code {
 padding: 0;
@@ -1674,23 +1682,17 @@ overflow-y: auto;
 border: 1px solid #ddd;
 border-radius: 4px;
 }
-.tabset-dropdown > .nav-tabs > li.active:before {
-content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+content: "\e259";
 font-family: 'Glyphicons Halflings';
 display: inline-block;
 padding: 10px;
 border-right: 1px solid #ddd;
 }
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-content: "";
-border: none;
-}
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-content: "";
+content: "\e258";
 font-family: 'Glyphicons Halflings';
-display: inline-block;
-padding: 10px;
-border-right: 1px solid #ddd;
+border: none;
 }
 .tabset-dropdown > .nav-tabs > li.active {
 display: block;
@@ -1733,7 +1735,7 @@ display: none;
 <div id="header">
 
 <div class="btn-group pull-right float-right">
-<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
 <ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
 <li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
 <li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
@@ -1779,7 +1781,7 @@ ncomponents=6
 opt_num=&quot;full&quot;
 SMCCA_GS_out = MultiCCA_GS(moData, opt_num=opt_num, ncomponents=ncomponents)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDFcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyM1xuUGVybXV0YXRpb24gIDEgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMiBvZiAgMTBcblBlcm11dGF0aW9uICAzIG9mICAxMFxuUGVybXV0YXRpb24gIDQgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNSBvZiAgMTBcblBlcm11dGF0aW9uICA2IG9mICAxMFxuUGVybXV0YXRpb24gIDcgb2YgIDEwXG5QZXJtdXRhdGlvbiAgOCBvZiAgMTBcblBlcm11dGF0aW9uICA5IG9mICAxMFxuUGVybXV0YXRpb24gIDEwIG9mICAxMFxuXG4xMjM0NVsxXSBcIjEvNiBjYW5vbmljYWwgdmVjdG9ycyBjb21wbGV0ZWQuXCJcblsxXSAyXG4xMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjEyXG5QZXJtdXRhdGlvbiAgMSBvZiAgMTBcblBlcm11dGF0aW9uICAyIG9mICAxMFxuUGVybXV0YXRpb24gIDMgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNCBvZiAgMTBcblBlcm11dGF0aW9uICA1IG9mICAxMFxuUGVybXV0YXRpb24gIDYgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNyBvZiAgMTBcblBlcm11dGF0aW9uICA4IG9mICAxMFxuUGVybXV0YXRpb24gIDkgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMTAgb2YgIDEwXG5cbjEyMzQ1Njc4OTEwWzFdIFwiMi82IGNhbm9uaWNhbCB2ZWN0b3JzIGNvbXBsZXRlZC5cIlxuWzFdIDNcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMTJcblBlcm11dGF0aW9uICAxIG9mICAxMFxuUGVybXV0YXRpb24gIDIgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMyBvZiAgMTBcblBlcm11dGF0aW9uICA0IG9mICAxMFxuUGVybXV0YXRpb24gIDUgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNiBvZiAgMTBcblBlcm11dGF0aW9uICA3IG9mICAxMFxuUGVybXV0YXRpb24gIDggb2YgIDEwXG5QZXJtdXRhdGlvbiAgOSBvZiAgMTBcblBlcm11dGF0aW9uICAxMCBvZiAgMTBcblxuMTIzNFsxXSBcIjMvNiBjYW5vbmljYWwgdmVjdG9ycyBjb21wbGV0ZWQuXCJcblsxXSA0XG4xMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjEyXG5QZXJtdXRhdGlvbiAgMSBvZiAgMTBcblBlcm11dGF0aW9uICAyIG9mICAxMFxuUGVybXV0YXRpb24gIDMgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNCBvZiAgMTBcblBlcm11dGF0aW9uICA1IG9mICAxMFxuUGVybXV0YXRpb24gIDYgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNyBvZiAgMTBcblBlcm11dGF0aW9uICA4IG9mICAxMFxuUGVybXV0YXRpb24gIDkgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMTAgb2YgIDEwXG5cbjEyWzFdIFwiNC82IGNhbm9uaWNhbCB2ZWN0b3JzIGNvbXBsZXRlZC5cIlxuWzFdIDVcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyM1xuUGVybXV0YXRpb24gIDEgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMiBvZiAgMTBcblBlcm11dGF0aW9uICAzIG9mICAxMFxuUGVybXV0YXRpb24gIDQgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNSBvZiAgMTBcblBlcm11dGF0aW9uICA2IG9mICAxMFxuUGVybXV0YXRpb24gIDcgb2YgIDEwXG5QZXJtdXRhdGlvbiAgOCBvZiAgMTBcblBlcm11dGF0aW9uICA5IG9mICAxMFxuUGVybXV0YXRpb24gIDEwIG9mICAxMFxuXG4xMjM0NTZbMV0gXCI1LzYgY2Fub25pY2FsIHZlY3RvcnMgY29tcGxldGVkLlwiXG5bMV0gNlxuMTIzMTIzMTIzMTIzMTIzMTIzMTIzMTIzMTIzMTIzXG5QZXJtdXRhdGlvbiAgMSBvZiAgMTBcblBlcm11dGF0aW9uICAyIG9mICAxMFxuUGVybXV0YXRpb24gIDMgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNCBvZiAgMTBcblBlcm11dGF0aW9uICA1IG9mICAxMFxuUGVybXV0YXRpb24gIDYgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNyBvZiAgMTBcblBlcm11dGF0aW9uICA4IG9mICAxMFxuUGVybXV0YXRpb24gIDkgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMTAgb2YgIDEwXG5cbjEyMzQ1Njc4OVsxXSBcIjYvNiBjYW5vbmljYWwgdmVjdG9ycyBjb21wbGV0ZWQuXCJcbiJ9 -->
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDFcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyM1xuUGVybXV0YXRpb24gIDEgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMiBvZiAgMTBcblBlcm11dGF0aW9uICAzIG9mICAxMFxuUGVybXV0YXRpb24gIDQgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNSBvZiAgMTBcblBlcm11dGF0aW9uICA2IG9mICAxMFxuUGVybXV0YXRpb24gIDcgb2YgIDEwXG5QZXJtdXRhdGlvbiAgOCBvZiAgMTBcblBlcm11dGF0aW9uICA5IG9mICAxMFxuUGVybXV0YXRpb24gIDEwIG9mICAxMFxuXG4xMjM0NVsxXSBcIjEvNiBjYW5vbmljYWwgdmFyaWFibGVzIGNvbXBsZXRlZC5cIlxuWzFdIDJcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMTJcblBlcm11dGF0aW9uICAxIG9mICAxMFxuUGVybXV0YXRpb24gIDIgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMyBvZiAgMTBcblBlcm11dGF0aW9uICA0IG9mICAxMFxuUGVybXV0YXRpb24gIDUgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNiBvZiAgMTBcblBlcm11dGF0aW9uICA3IG9mICAxMFxuUGVybXV0YXRpb24gIDggb2YgIDEwXG5QZXJtdXRhdGlvbiAgOSBvZiAgMTBcblBlcm11dGF0aW9uICAxMCBvZiAgMTBcblxuMTIzNDU2Nzg5MTBbMV0gXCIyLzYgY2Fub25pY2FsIHZhcmlhYmxlcyBjb21wbGV0ZWQuXCJcblsxXSAzXG4xMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjEyXG5QZXJtdXRhdGlvbiAgMSBvZiAgMTBcblBlcm11dGF0aW9uICAyIG9mICAxMFxuUGVybXV0YXRpb24gIDMgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNCBvZiAgMTBcblBlcm11dGF0aW9uICA1IG9mICAxMFxuUGVybXV0YXRpb24gIDYgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNyBvZiAgMTBcblBlcm11dGF0aW9uICA4IG9mICAxMFxuUGVybXV0YXRpb24gIDkgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMTAgb2YgIDEwXG5cbjEyMzRbMV0gXCIzLzYgY2Fub25pY2FsIHZhcmlhYmxlcyBjb21wbGV0ZWQuXCJcblsxXSA0XG4xMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjEyXG5QZXJtdXRhdGlvbiAgMSBvZiAgMTBcblBlcm11dGF0aW9uICAyIG9mICAxMFxuUGVybXV0YXRpb24gIDMgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNCBvZiAgMTBcblBlcm11dGF0aW9uICA1IG9mICAxMFxuUGVybXV0YXRpb24gIDYgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNyBvZiAgMTBcblBlcm11dGF0aW9uICA4IG9mICAxMFxuUGVybXV0YXRpb24gIDkgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMTAgb2YgIDEwXG5cbjEyWzFdIFwiNC82IGNhbm9uaWNhbCB2YXJpYWJsZXMgY29tcGxldGVkLlwiXG5bMV0gNVxuMTIzMTIzMTIzMTIzMTIzMTIzMTIzMTIzMTIzMTIzXG5QZXJtdXRhdGlvbiAgMSBvZiAgMTBcblBlcm11dGF0aW9uICAyIG9mICAxMFxuUGVybXV0YXRpb24gIDMgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNCBvZiAgMTBcblBlcm11dGF0aW9uICA1IG9mICAxMFxuUGVybXV0YXRpb24gIDYgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNyBvZiAgMTBcblBlcm11dGF0aW9uICA4IG9mICAxMFxuUGVybXV0YXRpb24gIDkgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMTAgb2YgIDEwXG5cbjEyMzQ1NlsxXSBcIjUvNiBjYW5vbmljYWwgdmFyaWFibGVzIGNvbXBsZXRlZC5cIlxuWzFdIDZcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyM1xuUGVybXV0YXRpb24gIDEgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMiBvZiAgMTBcblBlcm11dGF0aW9uICAzIG9mICAxMFxuUGVybXV0YXRpb24gIDQgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNSBvZiAgMTBcblBlcm11dGF0aW9uICA2IG9mICAxMFxuUGVybXV0YXRpb24gIDcgb2YgIDEwXG5QZXJtdXRhdGlvbiAgOCBvZiAgMTBcblBlcm11dGF0aW9uICA5IG9mICAxMFxuUGVybXV0YXRpb24gIDEwIG9mICAxMFxuXG4xMjM0NTY3ODlbMV0gXCI2LzYgY2Fub25pY2FsIHZhcmlhYmxlcyBjb21wbGV0ZWQuXCJcbiJ9 -->
 <pre><code>[1] 1
 123123123123123123123123123123
 Permutation  1 of  10
@@ -1793,7 +1795,7 @@ Permutation  8 of  10
 Permutation  9 of  10
 Permutation  10 of  10
 
-12345[1] &quot;1/6 canonical vectors completed.&quot;
+12345[1] &quot;1/6 canonical variables completed.&quot;
 [1] 2
 1231231231231231231231231212
 Permutation  1 of  10
@@ -1807,7 +1809,7 @@ Permutation  8 of  10
 Permutation  9 of  10
 Permutation  10 of  10
 
-12345678910[1] &quot;2/6 canonical vectors completed.&quot;
+12345678910[1] &quot;2/6 canonical variables completed.&quot;
 [1] 3
 1231231231231231231231231212
 Permutation  1 of  10
@@ -1821,7 +1823,7 @@ Permutation  8 of  10
 Permutation  9 of  10
 Permutation  10 of  10
 
-1234[1] &quot;3/6 canonical vectors completed.&quot;
+1234[1] &quot;3/6 canonical variables completed.&quot;
 [1] 4
 1231231231231231231231231212
 Permutation  1 of  10
@@ -1835,7 +1837,7 @@ Permutation  8 of  10
 Permutation  9 of  10
 Permutation  10 of  10
 
-12[1] &quot;4/6 canonical vectors completed.&quot;
+12[1] &quot;4/6 canonical variables completed.&quot;
 [1] 5
 123123123123123123123123123123
 Permutation  1 of  10
@@ -1849,7 +1851,7 @@ Permutation  8 of  10
 Permutation  9 of  10
 Permutation  10 of  10
 
-123456[1] &quot;5/6 canonical vectors completed.&quot;
+123456[1] &quot;5/6 canonical variables completed.&quot;
 [1] 6
 123123123123123123123123123123
 Permutation  1 of  10
@@ -1863,7 +1865,7 @@ Permutation  8 of  10
 Permutation  9 of  10
 Permutation  10 of  10
 
-123456789[1] &quot;6/6 canonical vectors completed.&quot;</code></pre>
+123456789[1] &quot;6/6 canonical variables completed.&quot;</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -1943,7 +1945,7 @@ opt_num = &quot;full&quot;
 outcome = &quot;quantitative&quot;
 SSMCCA_out = sup_MultiCCA_GS(moData, Y_df, outcome=outcome, opt_num=opt_num, ncomponents=ncomponents)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDFcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyM1xuUGVybXV0YXRpb24gIDEgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMiBvZiAgMTBcblBlcm11dGF0aW9uICAzIG9mICAxMFxuUGVybXV0YXRpb24gIDQgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNSBvZiAgMTBcblBlcm11dGF0aW9uICA2IG9mICAxMFxuUGVybXV0YXRpb24gIDcgb2YgIDEwXG5QZXJtdXRhdGlvbiAgOCBvZiAgMTBcblBlcm11dGF0aW9uICA5IG9mICAxMFxuUGVybXV0YXRpb24gIDEwIG9mICAxMFxuXG4xMjM0WzFdIFwiMS82IGNhbm9uaWNhbCB2ZWN0b3JzIGNvbXBsZXRlZC5cIlxuWzFdIDJcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyM1xuUGVybXV0YXRpb24gIDEgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMiBvZiAgMTBcblBlcm11dGF0aW9uICAzIG9mICAxMFxuUGVybXV0YXRpb24gIDQgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNSBvZiAgMTBcblBlcm11dGF0aW9uICA2IG9mICAxMFxuUGVybXV0YXRpb24gIDcgb2YgIDEwXG5QZXJtdXRhdGlvbiAgOCBvZiAgMTBcblBlcm11dGF0aW9uICA5IG9mICAxMFxuUGVybXV0YXRpb24gIDEwIG9mICAxMFxuXG4xMjM0WzFdIFwiMi82IGNhbm9uaWNhbCB2ZWN0b3JzIGNvbXBsZXRlZC5cIlxuWzFdIDNcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyM1xuUGVybXV0YXRpb24gIDEgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMiBvZiAgMTBcblBlcm11dGF0aW9uICAzIG9mICAxMFxuUGVybXV0YXRpb24gIDQgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNSBvZiAgMTBcblBlcm11dGF0aW9uICA2IG9mICAxMFxuUGVybXV0YXRpb24gIDcgb2YgIDEwXG5QZXJtdXRhdGlvbiAgOCBvZiAgMTBcblBlcm11dGF0aW9uICA5IG9mICAxMFxuUGVybXV0YXRpb24gIDEwIG9mICAxMFxuXG4xMjM0WzFdIFwiMy82IGNhbm9uaWNhbCB2ZWN0b3JzIGNvbXBsZXRlZC5cIlxuWzFdIDRcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyM1xuUGVybXV0YXRpb24gIDEgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMiBvZiAgMTBcblBlcm11dGF0aW9uICAzIG9mICAxMFxuUGVybXV0YXRpb24gIDQgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNSBvZiAgMTBcblBlcm11dGF0aW9uICA2IG9mICAxMFxuUGVybXV0YXRpb24gIDcgb2YgIDEwXG5QZXJtdXRhdGlvbiAgOCBvZiAgMTBcblBlcm11dGF0aW9uICA5IG9mICAxMFxuUGVybXV0YXRpb24gIDEwIG9mICAxMFxuXG4xMjM0NVsxXSBcIjQvNiBjYW5vbmljYWwgdmVjdG9ycyBjb21wbGV0ZWQuXCJcblsxXSA1XG4xMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjNcblBlcm11dGF0aW9uICAxIG9mICAxMFxuUGVybXV0YXRpb24gIDIgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMyBvZiAgMTBcblBlcm11dGF0aW9uICA0IG9mICAxMFxuUGVybXV0YXRpb24gIDUgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNiBvZiAgMTBcblBlcm11dGF0aW9uICA3IG9mICAxMFxuUGVybXV0YXRpb24gIDggb2YgIDEwXG5QZXJtdXRhdGlvbiAgOSBvZiAgMTBcblBlcm11dGF0aW9uICAxMCBvZiAgMTBcblxuMTIzNDVbMV0gXCI1LzYgY2Fub25pY2FsIHZlY3RvcnMgY29tcGxldGVkLlwiXG5bMV0gNlxuMTIzMTIzMTIzMTIzMTIzMTIzMTIzMTIzMTIzMTIzXG5QZXJtdXRhdGlvbiAgMSBvZiAgMTBcblBlcm11dGF0aW9uICAyIG9mICAxMFxuUGVybXV0YXRpb24gIDMgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNCBvZiAgMTBcblBlcm11dGF0aW9uICA1IG9mICAxMFxuUGVybXV0YXRpb24gIDYgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNyBvZiAgMTBcblBlcm11dGF0aW9uICA4IG9mICAxMFxuUGVybXV0YXRpb24gIDkgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMTAgb2YgIDEwXG5cbjEyMzQ1WzFdIFwiNi82IGNhbm9uaWNhbCB2ZWN0b3JzIGNvbXBsZXRlZC5cIlxuIn0= -->
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDFcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyM1xuUGVybXV0YXRpb24gIDEgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMiBvZiAgMTBcblBlcm11dGF0aW9uICAzIG9mICAxMFxuUGVybXV0YXRpb24gIDQgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNSBvZiAgMTBcblBlcm11dGF0aW9uICA2IG9mICAxMFxuUGVybXV0YXRpb24gIDcgb2YgIDEwXG5QZXJtdXRhdGlvbiAgOCBvZiAgMTBcblBlcm11dGF0aW9uICA5IG9mICAxMFxuUGVybXV0YXRpb24gIDEwIG9mICAxMFxuXG4xMjM0WzFdIFwiMS82IGNhbm9uaWNhbCB2YXJpYWJsZXMgY29tcGxldGVkLlwiXG5bMV0gMlxuMTIzMTIzMTIzMTIzMTIzMTIzMTIzMTIzMTIzMTIzXG5QZXJtdXRhdGlvbiAgMSBvZiAgMTBcblBlcm11dGF0aW9uICAyIG9mICAxMFxuUGVybXV0YXRpb24gIDMgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNCBvZiAgMTBcblBlcm11dGF0aW9uICA1IG9mICAxMFxuUGVybXV0YXRpb24gIDYgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNyBvZiAgMTBcblBlcm11dGF0aW9uICA4IG9mICAxMFxuUGVybXV0YXRpb24gIDkgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMTAgb2YgIDEwXG5cbjEyMzRbMV0gXCIyLzYgY2Fub25pY2FsIHZhcmlhYmxlcyBjb21wbGV0ZWQuXCJcblsxXSAzXG4xMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjMxMjNcblBlcm11dGF0aW9uICAxIG9mICAxMFxuUGVybXV0YXRpb24gIDIgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMyBvZiAgMTBcblBlcm11dGF0aW9uICA0IG9mICAxMFxuUGVybXV0YXRpb24gIDUgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNiBvZiAgMTBcblBlcm11dGF0aW9uICA3IG9mICAxMFxuUGVybXV0YXRpb24gIDggb2YgIDEwXG5QZXJtdXRhdGlvbiAgOSBvZiAgMTBcblBlcm11dGF0aW9uICAxMCBvZiAgMTBcblxuMTIzNFsxXSBcIjMvNiBjYW5vbmljYWwgdmFyaWFibGVzIGNvbXBsZXRlZC5cIlxuWzFdIDRcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyM1xuUGVybXV0YXRpb24gIDEgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMiBvZiAgMTBcblBlcm11dGF0aW9uICAzIG9mICAxMFxuUGVybXV0YXRpb24gIDQgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNSBvZiAgMTBcblBlcm11dGF0aW9uICA2IG9mICAxMFxuUGVybXV0YXRpb24gIDcgb2YgIDEwXG5QZXJtdXRhdGlvbiAgOCBvZiAgMTBcblBlcm11dGF0aW9uICA5IG9mICAxMFxuUGVybXV0YXRpb24gIDEwIG9mICAxMFxuXG4xMjM0NVsxXSBcIjQvNiBjYW5vbmljYWwgdmFyaWFibGVzIGNvbXBsZXRlZC5cIlxuWzFdIDVcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyM1xuUGVybXV0YXRpb24gIDEgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMiBvZiAgMTBcblBlcm11dGF0aW9uICAzIG9mICAxMFxuUGVybXV0YXRpb24gIDQgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNSBvZiAgMTBcblBlcm11dGF0aW9uICA2IG9mICAxMFxuUGVybXV0YXRpb24gIDcgb2YgIDEwXG5QZXJtdXRhdGlvbiAgOCBvZiAgMTBcblBlcm11dGF0aW9uICA5IG9mICAxMFxuUGVybXV0YXRpb24gIDEwIG9mICAxMFxuXG4xMjM0NVsxXSBcIjUvNiBjYW5vbmljYWwgdmFyaWFibGVzIGNvbXBsZXRlZC5cIlxuWzFdIDZcbjEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyMzEyM1xuUGVybXV0YXRpb24gIDEgb2YgIDEwXG5QZXJtdXRhdGlvbiAgMiBvZiAgMTBcblBlcm11dGF0aW9uICAzIG9mICAxMFxuUGVybXV0YXRpb24gIDQgb2YgIDEwXG5QZXJtdXRhdGlvbiAgNSBvZiAgMTBcblBlcm11dGF0aW9uICA2IG9mICAxMFxuUGVybXV0YXRpb24gIDcgb2YgIDEwXG5QZXJtdXRhdGlvbiAgOCBvZiAgMTBcblBlcm11dGF0aW9uICA5IG9mICAxMFxuUGVybXV0YXRpb24gIDEwIG9mICAxMFxuXG4xMjM0NVsxXSBcIjYvNiBjYW5vbmljYWwgdmFyaWFibGVzIGNvbXBsZXRlZC5cIlxuIn0= -->
 <pre><code>[1] 1
 123123123123123123123123123123
 Permutation  1 of  10
@@ -1957,7 +1959,7 @@ Permutation  8 of  10
 Permutation  9 of  10
 Permutation  10 of  10
 
-1234[1] &quot;1/6 canonical vectors completed.&quot;
+1234[1] &quot;1/6 canonical variables completed.&quot;
 [1] 2
 123123123123123123123123123123
 Permutation  1 of  10
@@ -1971,7 +1973,7 @@ Permutation  8 of  10
 Permutation  9 of  10
 Permutation  10 of  10
 
-1234[1] &quot;2/6 canonical vectors completed.&quot;
+1234[1] &quot;2/6 canonical variables completed.&quot;
 [1] 3
 123123123123123123123123123123
 Permutation  1 of  10
@@ -1985,7 +1987,7 @@ Permutation  8 of  10
 Permutation  9 of  10
 Permutation  10 of  10
 
-1234[1] &quot;3/6 canonical vectors completed.&quot;
+1234[1] &quot;3/6 canonical variables completed.&quot;
 [1] 4
 123123123123123123123123123123
 Permutation  1 of  10
@@ -1999,7 +2001,7 @@ Permutation  8 of  10
 Permutation  9 of  10
 Permutation  10 of  10
 
-12345[1] &quot;4/6 canonical vectors completed.&quot;
+12345[1] &quot;4/6 canonical variables completed.&quot;
 [1] 5
 123123123123123123123123123123
 Permutation  1 of  10
@@ -2013,7 +2015,7 @@ Permutation  8 of  10
 Permutation  9 of  10
 Permutation  10 of  10
 
-12345[1] &quot;5/6 canonical vectors completed.&quot;
+12345[1] &quot;5/6 canonical variables completed.&quot;
 [1] 6
 123123123123123123123123123123
 Permutation  1 of  10
@@ -2027,7 +2029,7 @@ Permutation  8 of  10
 Permutation  9 of  10
 Permutation  10 of  10
 
-12345[1] &quot;6/6 canonical vectors completed.&quot;</code></pre>
+12345[1] &quot;6/6 canonical variables completed.&quot;</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->

@@ -24,7 +24,7 @@ source("function_SMCCA-GS_SSMCCA.R")
 
 ## Description of main functions
 
-SMCCA-GS is used for finding canonical vectors (CVs) with maximal sum correlation across all input assays without involving any outcomes (and thus unsupervised), and is implemented in the function ```MultiCCA_GS```. SSMCCA is the supervised version where outcomes are considered, and is implemented in the function ```sup_MultiCCA_GS```.
+SMCCA-GS is used for finding canonical variables (CVs) with maximal sum correlation across all input assays without involving any outcomes (and thus unsupervised), and is implemented in the function ```MultiCCA_GS```. SSMCCA is the supervised version where outcomes are considered, and is implemented in the function ```sup_MultiCCA_GS```.
 
 ### ```MultiCCA_GS```
 
@@ -50,7 +50,7 @@ MultiCCA_GS(moData, update_type="nores", opt_num=4, ncomponents=1, nperms=10, ni
 
 | Object(s)    | Description                                                                                                                                                                                                                                |
 |-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| canon_var | a list of matrices that contains canonical vectors (CVs) for each assay. The dimension of a CV matrix is $n\times p$, where $n$ is the sample size of the corresponding assay, and $p$ is the number of CVs (specified by ```ncomponents```).       |
+| canon_var | a list of matrices that contains canonical variables (CVs) for each assay. The dimension of a CV matrix is $n\times p$, where $n$ is the sample size of the corresponding assay, and $p$ is the number of CVs (specified by ```ncomponents```).       |
 | weight    | a list of matrices that contains weights for each assay. The dimension of a weight matrix is $M\times p$, where $p$ is the number of CVs (specified by ```ncomponents```) and $M$ is the number of features of the corresponding assay. Features here are the columns of assays. |
 | penalty   | a matrix that records penalty of each assay of each CV. The dimension of a penalty matrix is $p\times K$, where $p$ is the number of CVs (specified by ```ncomponents```) and $K$ is the number of assays.                                                                  |
 
@@ -82,7 +82,7 @@ sup_MultiCCA_GS(moData, y, outcome, update_type="nores", opt_num=4, assay_name_l
 
 | Object(s)          | Description                                                                                                                                                                                                                                                                                  |
 |-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| canon_var       | a list of matrices that contains canonical vectors (CVs) for each assay. The dimension of a CV matrix is $n\times p$, where $n$ is the sample size of the corresponding assay, and $p$ is the number of CVs (specified by ```ncomponents```).                                                         |
+| canon_var       | a list of matrices that contains canonical variables (CVs) for each assay. The dimension of a CV matrix is $n\times p$, where $n$ is the sample size of the corresponding assay, and $p$ is the number of CVs (specified by ```ncomponents```).                                                         |
 | weight          | a list of matrices that contains weights for each assay. The dimension of a weight matrix is $M\times p$, where $p$ is the number of CVs (specified by ```ncomponents```) and $M$ is the number of features of the corresponding assay.                                                 |
 | weight_select   | a list of matrices that contains weights for features kept for each assay. Each ```weight_selelct``` matrix has dimension $M'\times p$ where $M'$ is the number of kept features of the corresponding assay, and $p$ is the number of CVs (specified by ```ncomponents```). |
 | feature_dropped | a list of vectors that contains features dropped in the feature selection step. Each vector is for one input assay.                                                                                                                                                                                                                    |

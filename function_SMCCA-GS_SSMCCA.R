@@ -50,7 +50,7 @@ MultiCCA_GS <- function(moData, update_type="nores", opt_num=4, ncomponents=1, n
 			weight_list[[mat_idx]][, comp_i] = w_i
 			cv_list[[mat_idx]][, comp_i] = var_i
 		}
-		print(sprintf("%d/%d canonical vectors completed.", comp_i, ncomponents))
+		print(sprintf("%d/%d canonical variables completed.", comp_i, ncomponents))
 	}
 
 	penalty_df = t(do.call(cbind, penalty_list))
@@ -63,7 +63,7 @@ MultiCCA_GS <- function(moData, update_type="nores", opt_num=4, ncomponents=1, n
 # Supervised Sparse Multiple Canonical Correlation Analysis
 # based on sup_MultiCCA_GS
 
-sup_MultiCCA_GS <- function(moData, y, outcome, update_type="nores", opt_num=4, qt_list=NULL, ncomponents=1, nperms=10, niter=25, cca_seed=42) {
+sup_MultiCCA_GS <- function(moData, y, outcome, opt_num=4, update_type="nores", qt_list=NULL, ncomponents=1, nperms=10, niter=25, cca_seed=42) {
 	# moData should be the list of dataframe rather than R matrix
 	mat_num = length(moData)
 
@@ -140,7 +140,7 @@ sup_MultiCCA_GS <- function(moData, y, outcome, update_type="nores", opt_num=4, 
 			tmp_w_rbind = rbind(w_i, weight_dropped)
 			weight_list[[mat_idx]][, comp_i] = tmp_w_rbind[rownames(weight_list[[mat_idx]]), ]
 		}
-		print(sprintf("%d/%d canonical vectors completed.", comp_i, ncomponents))
+		print(sprintf("%d/%d canonical variables completed.", comp_i, ncomponents))
 	}
 
 	penalty_df = t(do.call(cbind, penalty_list))
