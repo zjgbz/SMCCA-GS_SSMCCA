@@ -4,6 +4,8 @@ This package provides our implementations of two extensions of canonical correla
 
 If this source code or accompanying files are helpful for your research, please cite the following publication:
 
+Jiang, Min-Zhi, et al. "Canonical correlation analysis for multi-omics: Application to cross-cohort analysis." PLoS genetics 19.5 (2023): e1010517.
+
 ## Files in this repository
 
 | Filename(s)                             | Description                                                                                                                                                                                                   |
